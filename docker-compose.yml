@@ -1,0 +1,39 @@
+services:
+    app:
+        hostname: base
+        container_name: app-base
+        image: base:${APP_ENV:-local}
+        build:
+            context: ./infra/
+            dockerfile: docker/Dockerfile
+            args:
+                - app_env=${APP_ENV:-local}
+                - user=${DEPLOY_USER:-www-data}
+                - uid=${DEPLOY_UID:-1000}
+        volumes:
+            - ./:/var/www/
+        working_dir: /var/www/
+        restart: unless-stopped
+        ports:
+            - "8899:8000"
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        networks:
+            - base
+        depends_on:
+            - redis
+
+    redis:
+        container_name: redis-base
+        image: redis:latest
+        hostname: redis-producers
+        restart: unless-stopped
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+        networks:
+            - base
+networks:
+    base:
+        name: base
+
+
