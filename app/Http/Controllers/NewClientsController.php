@@ -14,45 +14,90 @@ class NewClientsController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
-            // Validar se o request contém um array
-            $clients = $request->all();
+            $input = $request->all();
             
-            if (!is_array($clients)) {
-                return response()->json([
-                    'error' => 'O payload deve ser um array de clientes'
-                ], 400);
-            }
-
+            // Verificar se é um array ou objeto único
+            $clients = is_array($input) && isset($input[0]) ? $input : [$input];
+            
             $savedCount = 0;
+            $errors = [];
 
-            // Iterar por cada cliente no array
-            foreach ($clients as $clientData) {
-                // Verificar se o cliente tem CNPJ
-                if (!isset($clientData['cnpj'])) {
-                    continue; // Pula clientes sem CNPJ
+            // Iterar por cada cliente
+            foreach ($clients as $index => $clientData) {
+                // Validar estrutura obrigatória
+                if (!$this->validateClientStructure($clientData)) {
+                    $errors[] = "Cliente na posição {$index}: Estrutura inválida. Campos obrigatórios: cnpj, json, origem";
+                    continue;
                 }
 
-                // Criar o registro no banco
-                NewClient::create([
-                    'cnpj' => $clientData['cnpj'],
-                    'json' => json_encode($clientData), // Salva o objeto completo em JSON
-                    'status' => 'PEN', // Valor default
-                    'flag' => 0, // Valor default
-                ]);
+                // Validar CNPJ
+                if (empty($clientData['cnpj'])) {
+                    $errors[] = "Cliente na posição {$index}: CNPJ é obrigatório";
+                    continue;
+                }
 
-                $savedCount++;
+                // Validar JSON
+                if (!isset($clientData['json']) || !is_array($clientData['json'])) {
+                    $errors[] = "Cliente na posição {$index}: Campo 'json' deve ser um objeto válido";
+                    continue;
+                }
+
+                // Validar origem
+                if (empty($clientData['origem'])) {
+                    $errors[] = "Cliente na posição {$index}: Campo 'origem' é obrigatório";
+                    continue;
+                }
+
+                try {
+                    // Criar o registro no banco
+                    NewClient::create([
+                        'cnpj' => $clientData['cnpj'],
+                        'json' => $clientData['json'],
+                        'sintegra' => null, // Futuramente será preenchido
+                        'receita' => null, // Futuramente será preenchido
+                        'simples_nacional' => null, // Futuramente será preenchido
+                        'origem' => $clientData['origem'],
+                        'status' => 'PEN', // Valor default
+                        'flag' => 0, // Valor default
+                    ]);
+
+                    $savedCount++;
+                } catch (\Exception $e) {
+                    $errors[] = "Cliente na posição {$index}: Erro ao salvar no banco - " . $e->getMessage();
+                }
             }
 
-            return response()->json([
-                'message' => 'Clientes processados com sucesso',
+            $response = [
+                'message' => 'Processamento concluído',
                 'saved_count' => $savedCount,
-                'total_received' => count($clients)
-            ], 201);
+                'total_received' => count($clients),
+                'errors' => $errors
+            ];
+
+            $statusCode = $savedCount > 0 ? 201 : 400;
+
+            return response()->json($response, $statusCode);
 
         } catch (\Exception $e) {
             return response()->json([
-                'error' => 'Erro ao processar clientes: ' . $e->getMessage()
+                'error' => 'Erro interno do servidor: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Validar se a estrutura do cliente está correta
+     */
+    private function validateClientStructure(array $clientData): bool
+    {
+        $requiredFields = ['cnpj', 'json', 'origem'];
+        
+        foreach ($requiredFields as $field) {
+            if (!isset($clientData[$field])) {
+                return false;
+            }
+        }
+        
+        return true;
     }
 }

@@ -15,9 +15,11 @@ return new class extends Migration
             $table->id();
             $table->string('cnpj');
             $table->longText('json');
-            $table->enum('status', ['PEN', 'RPV', 'APV'])->default('PEN');
+            $table->enum('status', ['PEN', 'PRO', 'ERR', 'RPV', 'APV'])->default('PEN');
             $table->string('reason')->nullable();
+            $table->text('error_message')->nullable();
             $table->tinyInteger('flag')->default(0);
+            $table->timestamp('processed_at')->nullable();
             $table->timestamps();
         });
     }

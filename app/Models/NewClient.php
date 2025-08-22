@@ -24,8 +24,11 @@ class NewClient extends Model
     protected $fillable = [
         'cnpj',
         'json',
+        'sintegra',
+        'receita',
+        'simples_nacional',
+        'origem',
         'status',
-        'reason',
         'flag',
     ];
 
@@ -36,6 +39,9 @@ class NewClient extends Model
      */
     protected $casts = [
         'json' => 'array',
+        'sintegra' => 'array',
+        'receita' => 'array',
+        'simples_nacional' => 'array',
         'flag' => 'integer',
     ];
 

@@ -1,4 +1,4 @@
-FROM php:8.3-fpm
+FROM php:8.3-cli
 
 # Argumentos definidos no docker-compose.yml ou passados na construção da imagem
 ARG app_env
