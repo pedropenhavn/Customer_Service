@@ -16,13 +16,9 @@ class ProcessNewClientsController extends Controller
     public function processPendingClients(): JsonResponse
     {
         try {
-            Log::info('Iniciando processamento de clientes pendentes');
-            
             $pendingClients = NewClient::where('status', 'PEN')
                 ->where('flag', 0)
                 ->get();
-
-            Log::info('Clientes pendentes encontrados: ' . $pendingClients->count());
 
             if ($pendingClients->isEmpty()) {
                 return response()->json([
@@ -37,11 +33,7 @@ class ProcessNewClientsController extends Controller
             $results = [];
 
             foreach ($pendingClients as $client) {
-                Log::info("Processando cliente CNPJ: {$client->cnpj}");
-                
                 $result = $this->validateClient($client);
-                
-                Log::info("Resultado validação: " . json_encode($result));
                 
                 if ($result['valid']) {
                     $client->update(['status' => 'APV', 'flag' => 1]);
@@ -58,8 +50,6 @@ class ProcessNewClientsController extends Controller
                 ];
             }
 
-            Log::info("Processamento concluído. Processados: {$processed}, Erros: {$errors}");
-
             return response()->json([
                 'success' => true,
                 'message' => "Processados: {$processed}, Erros: {$errors}",
@@ -67,8 +57,6 @@ class ProcessNewClientsController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Erro no processamento: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
             return response()->json([
                 'success' => false,
                 'message' => 'Erro interno: ' . $e->getMessage()
@@ -82,82 +70,81 @@ class ProcessNewClientsController extends Controller
     private function validateClient(NewClient $client): array
     {
         try {
-            Log::info("Iniciando validação do cliente: {$client->cnpj}");
-            
             $cnpj = $this->normalizeCnpj($client->cnpj);
-            Log::info("CNPJ normalizado: {$cnpj}");
-            
             $jsonData = is_string($client->json) ? json_decode($client->json, true) : $client->json;
-            Log::info("Dados JSON original: " . json_encode($jsonData));
-
-            // Extrai dados do endereço se estiver aninhado
             $clientData = $this->extractAddressData($jsonData);
-            Log::info("Dados extraídos: " . json_encode($clientData));
 
             // Validações básicas
-            if (!$this->isValidCnpj($cnpj)) {
-                Log::warning("CNPJ inválido: {$cnpj}");
-                return ['valid' => false, 'message' => 'CNPJ inválido'];
+            $cnpjValidation = $this->isValidCnpj($cnpj);
+            if (!$cnpjValidation['valid']) {
+                return ['valid' => false, 'message' => $cnpjValidation['message']];
             }
 
             if (!$this->hasRequiredFields($clientData)) {
-                Log::warning("Campos obrigatórios ausentes para CNPJ: {$cnpj}");
                 return ['valid' => false, 'message' => 'Campos obrigatórios ausentes'];
             }
 
-            // Consulta CNPJ.ws
-            Log::info("Consultando CNPJ.ws para: {$cnpj}");
-            $cnpjData = $this->getCnpjData($cnpj);
-            Log::info("Resposta CNPJ.ws: " . json_encode($cnpjData));
+            // Primeiro tenta consultar Sintegra
+            $sintegraData = $this->consultarSintegra($cnpj);
             
-            if (!$cnpjData['success']) {
-                Log::error("Erro na consulta CNPJ.ws para {$cnpj}: " . $cnpjData['message']);
-                return ['valid' => false, 'message' => 'Erro na consulta CNPJ.ws'];
+            if ($sintegraData['success']) {
+                return $this->compararDados($clientData, $sintegraData['data']);
             }
 
-            // Valida dados
-            Log::info("Comparando dados para CNPJ: {$cnpj}");
-            $validation = $this->compareData($clientData, $cnpjData['data']);
-            Log::info("Resultado comparação: " . json_encode($validation));
+            // Se Sintegra falhar, tenta CNPJ.ws
+            $cnpjData = $this->consultarCnpjWs($cnpj);
             
-            return $validation;
+            if (!$cnpjData['success']) {
+                return ['valid' => false, 'message' => 'Erro na consulta das APIs'];
+            }
+
+            return $this->compararDados($clientData, $cnpjData['data']);
 
         } catch (\Exception $e) {
-            Log::error("Erro validando cliente {$client->cnpj}: " . $e->getMessage());
-            Log::error("Stack trace: " . $e->getTraceAsString());
             return ['valid' => false, 'message' => 'Erro interno na validação'];
         }
     }
 
     /**
-     * Normaliza CNPJ
+     * Consulta API Sintegra
      */
-    private function normalizeCnpj(string $cnpj): string
+    private function consultarSintegra(string $cnpj): array
     {
-        return preg_replace('/[^0-9]/', '', $cnpj);
+        $apiKey = env('SINTEGRA_API_KEY');
+        $url = env('SINTEGRA_API_URL') . $cnpj;
+
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_HTTPHEADER => [
+                "x-api-key: {$apiKey}",
+                "cache: 10"
+            ]
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || !$response) {
+            return ['success' => false, 'message' => 'Erro na consulta Sintegra'];
+        }
+
+        $data = json_decode($response, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return ['success' => false, 'message' => 'Erro ao decodificar resposta Sintegra'];
+        }
+
+        return ['success' => true, 'data' => $data];
     }
 
     /**
-     * Valida formato do CNPJ
+     * Consulta API CNPJ.ws
      */
-    private function isValidCnpj(string $cnpj): bool
-    {
-        return strlen($cnpj) === 14 && !preg_match('/^(\d)\1+$/', $cnpj);
-    }
-
-    /**
-     * Verifica campos obrigatórios
-     */
-    private function hasRequiredFields(array $data): bool
-    {
-        $required = ['logradouro', 'numero', 'bairro', 'cidade', 'estado', 'cep'];
-        return !array_diff($required, array_keys($data));
-    }
-
-    /**
-     * Consulta CNPJ.ws
-     */
-    private function getCnpjData(string $cnpj): array
+    private function consultarCnpjWs(string $cnpj): array
     {
         $url = env('CNPJ_WS_URI') . $cnpj;
         
@@ -177,7 +164,7 @@ class ProcessNewClientsController extends Controller
         curl_close($ch);
 
         if ($httpCode !== 200 || !$response) {
-            return ['success' => false, 'message' => 'Erro na consulta'];
+            return ['success' => false, 'message' => 'Erro na consulta CNPJ.ws'];
         }
 
         $data = json_decode($response, true);
@@ -185,9 +172,76 @@ class ProcessNewClientsController extends Controller
     }
 
     /**
-     * Compara dados do cliente com dados do CNPJ.ws
+     * Compara dados do cliente com dados da API
      */
-    private function compareData(array $clientData, array $cnpjData): array
+    private function compararDados(array $clientData, array $apiData): array
+    {
+        // Verifica se é resposta do Sintegra ou CNPJ.ws
+        if (isset($apiData['response'])) {
+            // Resposta do Sintegra
+            return $this->compararDadosSintegra($clientData, $apiData['response']);
+        } else {
+            // Resposta do CNPJ.ws
+            return $this->compararDadosCnpjWs($clientData, $apiData);
+        }
+    }
+
+    /**
+     * Compara dados com resposta do Sintegra
+     */
+    private function compararDadosSintegra(array $clientData, array $sintegraData): array
+    {
+        $errors = [];
+
+        // Validação de endereço
+        $addressFields = [
+            'logradouro' => 'logradouro',
+            'numero' => 'numero',
+            'cep' => 'cep'
+        ];
+
+        foreach ($addressFields as $clientField => $sintegraField) {
+            $clientValue = trim(strtolower($clientData[$clientField] ?? ''));
+            $sintegraValue = trim(strtolower($sintegraData[$sintegraField] ?? ''));
+            
+            if ($clientValue !== $sintegraValue) {
+                $errors[] = "Campo '{$clientField}' não confere";
+            }
+        }
+
+        // Validação de cidade e estado
+        if (isset($clientData['cidade']) && isset($sintegraData['municipio'])) {
+            $clientCidade = trim(strtolower($clientData['cidade']));
+            $sintegraCidade = trim(strtolower($sintegraData['municipio']));
+            if ($clientCidade !== $sintegraCidade) {
+                $errors[] = "Cidade não confere";
+            }
+        }
+
+        if (isset($clientData['estado']) && isset($sintegraData['uf'])) {
+            $clientEstado = trim(strtoupper($clientData['estado']));
+            $sintegraEstado = trim(strtoupper($sintegraData['uf']));
+            if ($clientEstado !== $sintegraEstado) {
+                $errors[] = "Estado não confere";
+            }
+        }
+
+        // Validação situação cadastral
+        $situacaoCadastral = $sintegraData['situacao_cadastral'] ?? null;
+        if ($situacaoCadastral && $situacaoCadastral !== 'ATIVA') {
+            $errors[] = "Situação cadastral inválida: {$situacaoCadastral}";
+        }
+
+        return [
+            'valid' => empty($errors),
+            'message' => empty($errors) ? 'Dados válidos' : implode(', ', $errors)
+        ];
+    }
+
+    /**
+     * Compara dados com resposta do CNPJ.ws
+     */
+    private function compararDadosCnpjWs(array $clientData, array $cnpjData): array
     {
         $establishment = $cnpjData['estabelecimento'] ?? null;
         if (!$establishment) {
@@ -196,15 +250,15 @@ class ProcessNewClientsController extends Controller
 
         $errors = [];
         
-        // Campos para comparar
-        $fields = [
+        // Validação de endereço
+        $addressFields = [
             'logradouro' => 'logradouro',
             'numero' => 'numero',
             'bairro' => 'bairro',
             'cep' => 'cep'
         ];
 
-        foreach ($fields as $clientField => $cnpjField) {
+        foreach ($addressFields as $clientField => $cnpjField) {
             $clientValue = trim(strtolower($clientData[$clientField] ?? ''));
             $cnpjValue = trim(strtolower($establishment[$cnpjField] ?? ''));
             
@@ -213,7 +267,7 @@ class ProcessNewClientsController extends Controller
             }
         }
 
-        // Valida cidade e estado
+        // Validação de cidade e estado
         if (isset($clientData['cidade']) && isset($establishment['cidade']['nome'])) {
             $clientCidade = trim(strtolower($clientData['cidade']));
             $cnpjCidade = trim(strtolower($establishment['cidade']['nome']));
@@ -230,6 +284,12 @@ class ProcessNewClientsController extends Controller
             }
         }
 
+        // Validação situação cadastral
+        $situacaoCadastral = $establishment['situacao_cadastral'] ?? null;
+        if ($situacaoCadastral && $situacaoCadastral !== 'ATIVA') {
+            $errors[] = "Situação cadastral inválida: {$situacaoCadastral}";
+        }
+
         return [
             'valid' => empty($errors),
             'message' => empty($errors) ? 'Dados válidos' : implode(', ', $errors)
@@ -237,15 +297,75 @@ class ProcessNewClientsController extends Controller
     }
 
     /**
+     * Normaliza CNPJ removendo caracteres especiais
+     */
+    private function normalizeCnpj(string $cnpj): string
+    {
+        return preg_replace('/[^0-9]/', '', $cnpj);
+    }
+
+    /**
+     * Valida formato do CNPJ
+     */
+    private function isValidCnpj(string $cnpj): array
+    {
+        if (strlen($cnpj) !== 14) {
+            return ['valid' => false, 'message' => "CNPJ deve ter 14 dígitos, encontrado: " . strlen($cnpj)];
+        }
+        
+        if (preg_match('/^(\d)\1+$/', $cnpj)) {
+            return ['valid' => false, 'message' => 'CNPJ não pode ter todos os dígitos iguais'];
+        }
+        
+        // Validação dos dígitos verificadores
+        $soma1 = 0;
+        $soma2 = 0;
+        
+        // Primeiro dígito verificador
+        $pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+        for ($i = 0; $i < 12; $i++) {
+            $soma1 += intval($cnpj[$i]) * $pesos1[$i];
+        }
+        $resto1 = $soma1 % 11;
+        $dv1 = ($resto1 < 2) ? 0 : (11 - $resto1);
+        
+        if (intval($cnpj[12]) !== $dv1) {
+            return ['valid' => false, 'message' => 'Primeiro dígito verificador inválido'];
+        }
+        
+        // Segundo dígito verificador
+        $pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+        for ($i = 0; $i < 13; $i++) {
+            $soma2 += intval($cnpj[$i]) * $pesos2[$i];
+        }
+        $resto2 = $soma2 % 11;
+        $dv2 = ($resto2 < 2) ? 0 : (11 - $resto2);
+        
+        if (intval($cnpj[13]) !== $dv2) {
+            return ['valid' => false, 'message' => 'Segundo dígito verificador inválido'];
+        }
+        
+        return ['valid' => true, 'message' => 'CNPJ válido'];
+    }
+
+    /**
+     * Verifica se todos os campos obrigatórios estão presentes
+     */
+    private function hasRequiredFields(array $data): bool
+    {
+        $required = ['logradouro', 'numero', 'bairro', 'cidade', 'estado', 'cep'];
+        $missingFields = array_diff($required, array_keys($data));
+        return empty($missingFields);
+    }
+
+    /**
      * Extrai dados do endereço do JSON
      */
     private function extractAddressData(array $jsonData): array
     {
-        // Se os dados estão aninhados em 'endereco'
         if (isset($jsonData['endereco']) && is_array($jsonData['endereco'])) {
             $addressData = $jsonData['endereco'];
             
-            // Mapeia 'uf' para 'estado' se necessário
             if (isset($addressData['uf']) && !isset($addressData['estado'])) {
                 $addressData['estado'] = $addressData['uf'];
             }
@@ -253,12 +373,11 @@ class ProcessNewClientsController extends Controller
             return $addressData;
         }
         
-        // Se os dados estão no nível raiz
         return $jsonData;
     }
 
     /**
-     * Estatísticas dos clientes
+     * Retorna estatísticas dos clientes
      */
     public function getStatistics(): JsonResponse
     {
