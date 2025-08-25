@@ -25,6 +25,7 @@ class NewClient extends Model
         'cnpj',
         'json',
         'sintegra',
+        'cnpjws',
         'receita',
         'simples_nacional',
         'origem',
@@ -40,6 +41,7 @@ class NewClient extends Model
     protected $casts = [
         'json' => 'array',
         'sintegra' => 'array',
+        'cnpjws' => 'array',
         'receita' => 'array',
         'simples_nacional' => 'array',
         'flag' => 'integer',

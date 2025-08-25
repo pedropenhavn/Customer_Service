@@ -15,10 +15,9 @@ class ProcessNewClientsController extends Controller
      */
     public function processPendingClients(): JsonResponse
     {
+
         try {
-            $pendingClients = NewClient::where('status', 'PEN')
-                ->where('flag', 0)
-                ->get();
+            $pendingClients = NewClient::where('id', 8)->get();
 
             if ($pendingClients->isEmpty()) {
                 return response()->json([
@@ -85,9 +84,16 @@ class ProcessNewClientsController extends Controller
             }
 
             // Primeiro tenta consultar Sintegra
-            $sintegraData = $this->consultarSintegra($cnpj);
+                         $sintegraData = $this->consultarSintegra($cnpj);
             
             if ($sintegraData['success']) {
+                // Salva o JSON do Sintegra no banco
+                Log::info("Sintegra retornou sucesso para CNPJ: {$cnpj}");
+                Log::info("Dados Sintegra: " . json_encode($sintegraData['data']));
+                
+                $updateResult = $client->update(['sintegra' => json_encode($sintegraData['data'])]);
+                Log::info("Resultado do update: " . ($updateResult ? 'true' : 'false'));
+                
                 return $this->compararDados($clientData, $sintegraData['data']);
             }
 
@@ -97,6 +103,9 @@ class ProcessNewClientsController extends Controller
             if (!$cnpjData['success']) {
                 return ['valid' => false, 'message' => 'Erro na consulta das APIs'];
             }
+
+            // Salva o JSON do CNPJ.ws no banco (já que Sintegra falhou)
+            $client->update(['cnpjws' => json_encode($cnpjData['data'])]);
 
             return $this->compararDados($clientData, $cnpjData['data']);
 
@@ -110,19 +119,15 @@ class ProcessNewClientsController extends Controller
      */
     private function consultarSintegra(string $cnpj): array
     {
-        $apiKey = env('SINTEGRA_API_KEY');
-        $url = env('SINTEGRA_API_URL') . $cnpj;
+        $token = env('SINTEGRA_API_KEY');
+        $url = 'https://www.sintegraws.com.br/api/v1/execute-api.php';
 
         $ch = curl_init();
         curl_setopt_array($ch, [
-            CURLOPT_URL => $url,
+            CURLOPT_URL => $url . '?token=' . $token . '&cnpj=' . $cnpj . '&plugin=ST',
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 30,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_HTTPHEADER => [
-                "x-api-key: {$apiKey}",
-                "cache: 10"
-            ]
+            CURLOPT_SSL_VERIFYPEER => false
         ]);
 
         $response = curl_exec($ch);
@@ -136,6 +141,11 @@ class ProcessNewClientsController extends Controller
         $data = json_decode($response, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             return ['success' => false, 'message' => 'Erro ao decodificar resposta Sintegra'];
+        }
+
+        // Verifica se a API retornou erro
+        if ($data['status'] === 'ERROR' || $data['code'] !== '0') {
+            return ['success' => false, 'message' => $data['message'] ?? 'Erro na API Sintegra'];
         }
 
         return ['success' => true, 'data' => $data];
@@ -177,9 +187,9 @@ class ProcessNewClientsController extends Controller
     private function compararDados(array $clientData, array $apiData): array
     {
         // Verifica se é resposta do Sintegra ou CNPJ.ws
-        if (isset($apiData['response'])) {
+        if (isset($apiData['status']) && $apiData['status'] === 'OK') {
             // Resposta do Sintegra
-            return $this->compararDadosSintegra($clientData, $apiData['response']);
+            return $this->compararDadosSintegra($clientData, $apiData);
         } else {
             // Resposta do CNPJ.ws
             return $this->compararDadosCnpjWs($clientData, $apiData);
@@ -226,10 +236,16 @@ class ProcessNewClientsController extends Controller
             }
         }
 
-        // Validação situação cadastral
-        $situacaoCadastral = $sintegraData['situacao_cadastral'] ?? null;
-        if ($situacaoCadastral && $situacaoCadastral !== 'ATIVA') {
-            $errors[] = "Situação cadastral inválida: {$situacaoCadastral}";
+        // Validação situação cadastral (Sintegra retorna situacao_cnpj)
+        $situacaoCnpj = $sintegraData['situacao_cnpj'] ?? null;
+        if ($situacaoCnpj && $situacaoCnpj !== 'Sem restrição') {
+            $errors[] = "Situação CNPJ inválida: {$situacaoCnpj}";
+        }
+
+        // Validação situação IE
+        $situacaoIe = $sintegraData['situacao_ie'] ?? null;
+        if ($situacaoIe && $situacaoIe !== 'Ativo') {
+            $errors[] = "Situação IE inválida: {$situacaoIe}";
         }
 
         return [
