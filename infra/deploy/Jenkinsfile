@@ -11,8 +11,10 @@ pipeline {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'customer-service.env', variable: 'ENV_FILE')]) {
-                        sh "cp '${ENV_FILE}' /var/lib/jenkins/workspace/customer-service/.env"
-                        sh "chmod 775 /var/lib/jenkins/workspace/customer-service/.env"
+                        sh '''
+                            cp $ENV_FILE $WORKSPACE/.env
+                            chmod 600 $WORKSPACE/.env
+                        '''
                     }
                 }
             }
@@ -27,4 +29,3 @@ pipeline {
         }
     }
 }
-
