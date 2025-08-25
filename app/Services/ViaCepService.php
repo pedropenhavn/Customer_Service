@@ -157,6 +157,145 @@ class ViaCepService
     }
 
     /**
+     * Compara logradouros de forma inteligente (baseado na referência Java)
+     */
+    private function compareLogradouroValues(string $value1, string $value2): bool
+    {
+        // Normalização básica
+        $log1 = $this->normalizeLogradouro($value1);
+        $log2 = $this->normalizeLogradouro($value2);
+        
+        // Comparação exata após normalização
+        if ($log1 === $log2) {
+            return true;
+        }
+        
+        // Comparação por similaridade (se não for exata)
+        return $this->isLogradouroSimilar($log1, $log2);
+    }
+
+    /**
+     * Normaliza logradouro de forma específica
+     */
+    private function normalizeLogradouro(string $text): string
+    {
+        // Remove espaços extras e converte para minúsculas
+        $text = trim(strtolower($text));
+        
+        // Remove acentos
+        $text = $this->removeAccents($text);
+        
+        // Remove prefixos de logradouro
+        $text = $this->removeAddressPrefixes($text);
+        
+        // Remove caracteres especiais mantendo apenas letras, números e espaços
+        $text = preg_replace('/[^a-z0-9\s]/', '', $text);
+        
+        // Remove espaços múltiplos e converte para espaço único
+        $text = preg_replace('/\s+/', ' ', $text);
+        
+        // Remove palavras comuns que podem variar
+        $text = $this->removeCommonWords($text);
+        
+        return trim($text);
+    }
+
+    /**
+     * Remove palavras comuns que podem variar entre sistemas
+     */
+    private function removeCommonWords(string $text): string
+    {
+        $commonWords = [
+            '/\bdoutor\b/i',
+            '/\bdr\b/i',
+            '/\bdra\b/i',
+            '/\bprofessor\b/i',
+            '/\bprof\b/i',
+            '/\bprofa\b/i',
+            '/\bengenheiro\b/i',
+            '/\beng\b/i',
+            '/\bengenheira\b/i',
+            '/\benga\b/i',
+            '/\bpresidente\b/i',
+            '/\bpres\b/i',
+            '/\bgovernador\b/i',
+            '/\bgovernadora\b/i',
+            '/\bprefeito\b/i',
+            '/\bprefeita\b/i',
+            '/\bsenador\b/i',
+            '/\bsenadora\b/i',
+            '/\bdeputado\b/i',
+            '/\bdeputada\b/i',
+            '/\bvereador\b/i',
+            '/\bvereadora\b/i',
+            '/\bdom\b/i',
+            '/\bsao\b/i',
+            '/\bsanta\b/i',
+            '/\bsanto\b/i',
+            '/\bsantos\b/i',
+            '/\bsantissima\b/i',
+            '/\bsantissimo\b/i',
+            '/\bnossa\b/i',
+            '/\bnosso\b/i',
+            '/\bsenhora\b/i',
+            '/\bsenhor\b/i',
+            '/\bsra\b/i',
+            '/\bsr\b/i'
+        ];
+        
+        foreach ($commonWords as $word) {
+            $text = preg_replace($word, '', $text);
+        }
+        
+        // Remove espaços múltiplos novamente
+        $text = preg_replace('/\s+/', ' ', $text);
+        
+        return trim($text);
+    }
+
+    /**
+     * Verifica se dois logradouros são similares
+     */
+    private function isLogradouroSimilar(string $log1, string $log2): bool
+    {
+        // Se um dos logradouros estiver vazio, não são similares
+        if (empty($log1) || empty($log2)) {
+            return false;
+        }
+        
+        // Calcula similaridade usando similar_text
+        similar_text($log1, $log2, $percent);
+        
+        // Se a similaridade for maior que 85%, considera similar
+        if ($percent >= 85) {
+            return true;
+        }
+        
+        // Verifica se um contém o outro (para casos como "campos sales" vs "doutor campos sales")
+        if (strpos($log1, $log2) !== false || strpos($log2, $log1) !== false) {
+            return true;
+        }
+        
+        // Verifica se as palavras principais são iguais
+        $words1 = explode(' ', $log1);
+        $words2 = explode(' ', $log2);
+        
+        // Remove palavras muito pequenas (menos de 3 caracteres)
+        $words1 = array_filter($words1, function($word) { return strlen($word) >= 3; });
+        $words2 = array_filter($words2, function($word) { return strlen($word) >= 3; });
+        
+        // Se pelo menos 70% das palavras principais são iguais
+        $commonWords = array_intersect($words1, $words2);
+        $totalWords = max(count($words1), count($words2));
+        
+        if ($totalWords > 0 && (count($commonWords) / $totalWords) >= 0.7) {
+            return true;
+        }
+        
+        return false;
+    }
+
+    /**
      * Valida dados do cliente com resposta do ViaCEP
      */
     public function validarDados(array $clientData, array $viaCepData): array
@@ -171,9 +310,28 @@ class ViaCepService
             'detalhes_divergencias' => []
         ];
 
-        // Validação de endereço
+        // Validação especial para logradouro (comparação inteligente)
+        if (isset($clientData['logradouro']) && isset($viaCepData['logradouro'])) {
+            $clientLogradouro = $clientData['logradouro'];
+            $viaCepLogradouro = $viaCepData['logradouro'];
+            
+            if ($this->compareLogradouroValues($clientLogradouro, $viaCepLogradouro)) {
+                $validation['campos_validados'][] = 'logradouro';
+                $validation['total_validados']++;
+            } else {
+                $validation['campos_erro'][] = "Campo 'logradouro' nao confere com o ViaCEP";
+                $validation['total_erros']++;
+                $validation['detalhes_divergencias'][] = [
+                    'campo' => 'logradouro',
+                    'valor_cliente' => $clientLogradouro ?: 'N/A',
+                    'valor_viacep' => $viaCepLogradouro ?: 'N/A',
+                    'observacao' => 'Comparacao inteligente de logradouro'
+                ];
+            }
+        }
+
+        // Validação para outros campos de endereço (comparação normal)
         $addressFields = [
-            'logradouro' => 'logradouro',
             'bairro' => 'bairro',
             'cep' => 'cep'
         ];
