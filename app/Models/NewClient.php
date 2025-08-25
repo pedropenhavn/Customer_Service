@@ -40,9 +40,6 @@ class NewClient extends Model
      */
     protected $casts = [
         'json' => 'array',
-        'sintegra' => 'array',
-        'cnpjws' => 'array',
-        'consultacep' => 'array',
         'flag' => 'integer',
     ];
 
