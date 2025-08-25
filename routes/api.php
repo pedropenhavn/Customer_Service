@@ -20,7 +20,8 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-// Rota para criar novos clientes
+// Rotas para clientes
+Route::get('/newClients', [NewClientsController::class, 'index']);
 Route::post('/newClients', [NewClientsController::class, 'store']);
 
 // Rotas para processamento de clientes

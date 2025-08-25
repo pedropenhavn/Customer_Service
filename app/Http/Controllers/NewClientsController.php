@@ -9,6 +9,72 @@ use Illuminate\Http\JsonResponse;
 class NewClientsController extends Controller
 {
     /**
+     * Display a listing of the resource with filters.
+     */
+    public function index(Request $request): JsonResponse
+    {
+        try {
+            $query = NewClient::query();
+
+            // Filtro por CNPJ
+            if ($request->has('cnpj') && !empty($request->cnpj)) {
+                $query->where('cnpj', 'like', '%' . $request->cnpj . '%');
+            }
+
+            // Filtro por origem
+            if ($request->has('origem') && !empty($request->origem)) {
+                $query->where('origem', $request->origem);
+            }
+
+            // Filtro por status
+            if ($request->has('status') && !empty($request->status)) {
+                $query->where('status', $request->status);
+            }
+
+            // Filtro por flag
+            if ($request->has('flag') && $request->flag !== '') {
+                $query->where('flag', $request->flag);
+            }
+
+            // Filtro por data de criação (from)
+            if ($request->has('created_from') && !empty($request->created_from)) {
+                $query->whereDate('created_at', '>=', $request->created_from);
+            }
+
+            // Filtro por data de criação (to)
+            if ($request->has('created_to') && !empty($request->created_to)) {
+                $query->whereDate('created_at', '<=', $request->created_to);
+            }
+
+            // Ordenação
+            $orderBy = $request->get('order_by', 'created_at');
+            $orderDirection = $request->get('order_direction', 'desc');
+            $query->orderBy($orderBy, $orderDirection);
+
+            // Paginação
+            $perPage = $request->get('per_page', 15);
+            $clients = $query->paginate($perPage);
+
+            return response()->json([
+                'data' => $clients->items(),
+                'pagination' => [
+                    'current_page' => $clients->currentPage(),
+                    'last_page' => $clients->lastPage(),
+                    'per_page' => $clients->perPage(),
+                    'total' => $clients->total(),
+                    'from' => $clients->firstItem(),
+                    'to' => $clients->lastItem(),
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Erro interno do servidor: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request): JsonResponse
