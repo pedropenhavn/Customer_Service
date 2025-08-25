@@ -26,8 +26,8 @@ class NewClient extends Model
         'json',
         'sintegra',
         'cnpjws',
-        'receita',
-        'simples_nacional',
+        'consultacep',
+        'reason',
         'origem',
         'status',
         'flag',
@@ -42,8 +42,7 @@ class NewClient extends Model
         'json' => 'array',
         'sintegra' => 'array',
         'cnpjws' => 'array',
-        'receita' => 'array',
-        'simples_nacional' => 'array',
+        'consultacep' => 'array',
         'flag' => 'integer',
     ];
 

@@ -15,9 +15,8 @@ class ProcessNewClientsController extends Controller
      */
     public function processPendingClients(): JsonResponse
     {
-
         try {
-            $pendingClients = NewClient::where('id', 8)->get();
+            $pendingClients = NewClient::where('id', 1)->get();
 
             if ($pendingClients->isEmpty()) {
                 return response()->json([
@@ -84,17 +83,14 @@ class ProcessNewClientsController extends Controller
             }
 
             // Primeiro tenta consultar Sintegra
-                         $sintegraData = $this->consultarSintegra($cnpj);
+            $sintegraData = $this->consultarSintegra($cnpj);
             
             if ($sintegraData['success']) {
                 // Salva o JSON do Sintegra no banco
-                Log::info("Sintegra retornou sucesso para CNPJ: {$cnpj}");
-                Log::info("Dados Sintegra: " . json_encode($sintegraData['data']));
-                
-                $updateResult = $client->update(['sintegra' => json_encode($sintegraData['data'])]);
-                Log::info("Resultado do update: " . ($updateResult ? 'true' : 'false'));
-                
-                return $this->compararDados($clientData, $sintegraData['data']);
+                $client->update(['sintegra' => json_encode($sintegraData['data'])]);
+                $validation = $this->compararDados($clientData, $sintegraData['data']);
+                $client->update(['reason' => json_encode($validation, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)]);
+                return $validation;
             }
 
             // Se Sintegra falhar, tenta CNPJ.ws
@@ -104,10 +100,11 @@ class ProcessNewClientsController extends Controller
                 return ['valid' => false, 'message' => 'Erro na consulta das APIs'];
             }
 
-            // Salva o JSON do CNPJ.ws no banco (já que Sintegra falhou)
+            // Salva o JSON do CNPJ.ws no banco
             $client->update(['cnpjws' => json_encode($cnpjData['data'])]);
-
-            return $this->compararDados($clientData, $cnpjData['data']);
+            $validation = $this->compararDados($clientData, $cnpjData['data']);
+            $client->update(['reason' => json_encode($validation, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)]);
+            return $validation;
 
         } catch (\Exception $e) {
             return ['valid' => false, 'message' => 'Erro interno na validação'];
@@ -188,10 +185,8 @@ class ProcessNewClientsController extends Controller
     {
         // Verifica se é resposta do Sintegra ou CNPJ.ws
         if (isset($apiData['status']) && $apiData['status'] === 'OK') {
-            // Resposta do Sintegra
             return $this->compararDadosSintegra($clientData, $apiData);
         } else {
-            // Resposta do CNPJ.ws
             return $this->compararDadosCnpjWs($clientData, $apiData);
         }
     }
@@ -201,7 +196,14 @@ class ProcessNewClientsController extends Controller
      */
     private function compararDadosSintegra(array $clientData, array $sintegraData): array
     {
-        $errors = [];
+        $validation = [
+            'api' => 'Sintegra',
+            'message' => 'Validacao realizada no Sintegra',
+            'campos_validados' => [],
+            'campos_erro' => [],
+            'total_validados' => 0,
+            'total_erros' => 0
+        ];
 
         // Validação de endereço
         $addressFields = [
@@ -214,8 +216,12 @@ class ProcessNewClientsController extends Controller
             $clientValue = trim(strtolower($clientData[$clientField] ?? ''));
             $sintegraValue = trim(strtolower($sintegraData[$sintegraField] ?? ''));
             
-            if ($clientValue !== $sintegraValue) {
-                $errors[] = "Campo '{$clientField}' não confere";
+            if ($clientValue === $sintegraValue) {
+                $validation['campos_validados'][] = $clientField;
+                $validation['total_validados']++;
+            } else {
+                $validation['campos_erro'][] = "Campo '{$clientField}' nao confere com o Sintegra";
+                $validation['total_erros']++;
             }
         }
 
@@ -223,35 +229,51 @@ class ProcessNewClientsController extends Controller
         if (isset($clientData['cidade']) && isset($sintegraData['municipio'])) {
             $clientCidade = trim(strtolower($clientData['cidade']));
             $sintegraCidade = trim(strtolower($sintegraData['municipio']));
-            if ($clientCidade !== $sintegraCidade) {
-                $errors[] = "Cidade não confere";
+            if ($clientCidade === $sintegraCidade) {
+                $validation['campos_validados'][] = 'cidade';
+                $validation['total_validados']++;
+            } else {
+                $validation['campos_erro'][] = "Cidade nao confere com o Sintegra";
+                $validation['total_erros']++;
             }
         }
 
         if (isset($clientData['estado']) && isset($sintegraData['uf'])) {
             $clientEstado = trim(strtoupper($clientData['estado']));
             $sintegraEstado = trim(strtoupper($sintegraData['uf']));
-            if ($clientEstado !== $sintegraEstado) {
-                $errors[] = "Estado não confere";
+            if ($clientEstado === $sintegraEstado) {
+                $validation['campos_validados'][] = 'estado';
+                $validation['total_validados']++;
+            } else {
+                $validation['campos_erro'][] = "Estado nao confere com o Sintegra";
+                $validation['total_erros']++;
             }
         }
 
-        // Validação situação cadastral (Sintegra retorna situacao_cnpj)
+        // Validação situação cadastral
         $situacaoCnpj = $sintegraData['situacao_cnpj'] ?? null;
         if ($situacaoCnpj && $situacaoCnpj !== 'Sem restrição') {
-            $errors[] = "Situação CNPJ inválida: {$situacaoCnpj}";
+            $validation['campos_erro'][] = "Situacao CNPJ invalida no Sintegra: {$situacaoCnpj}";
+            $validation['total_erros']++;
+        } else {
+            $validation['campos_validados'][] = 'situacao_cnpj';
+            $validation['total_validados']++;
         }
 
         // Validação situação IE
         $situacaoIe = $sintegraData['situacao_ie'] ?? null;
         if ($situacaoIe && $situacaoIe !== 'Ativo') {
-            $errors[] = "Situação IE inválida: {$situacaoIe}";
+            $validation['campos_erro'][] = "Situacao IE invalida no Sintegra: {$situacaoIe}";
+            $validation['total_erros']++;
+        } else {
+            $validation['campos_validados'][] = 'situacao_ie';
+            $validation['total_validados']++;
         }
 
-        return [
-            'valid' => empty($errors),
-            'message' => empty($errors) ? 'Dados válidos' : implode(', ', $errors)
-        ];
+        $validation['valid'] = $validation['total_erros'] === 0;
+        $validation['message'] = $validation['valid'] ? 'Todos os campos validados no Sintegra' : 'Campos com divergencia no Sintegra';
+
+        return $validation;
     }
 
     /**
@@ -264,7 +286,14 @@ class ProcessNewClientsController extends Controller
             return ['valid' => false, 'message' => 'Dados do estabelecimento não encontrados'];
         }
 
-        $errors = [];
+        $validation = [
+            'api' => 'CNPJ.ws',
+            'message' => 'Validacao realizada no CNPJ.ws',
+            'campos_validados' => [],
+            'campos_erro' => [],
+            'total_validados' => 0,
+            'total_erros' => 0
+        ];
         
         // Validação de endereço
         $addressFields = [
@@ -278,8 +307,12 @@ class ProcessNewClientsController extends Controller
             $clientValue = trim(strtolower($clientData[$clientField] ?? ''));
             $cnpjValue = trim(strtolower($establishment[$cnpjField] ?? ''));
             
-            if ($clientValue !== $cnpjValue) {
-                $errors[] = "Campo '{$clientField}' não confere";
+            if ($clientValue === $cnpjValue) {
+                $validation['campos_validados'][] = $clientField;
+                $validation['total_validados']++;
+            } else {
+                $validation['campos_erro'][] = "Campo '{$clientField}' nao confere com o CNPJ.ws";
+                $validation['total_erros']++;
             }
         }
 
@@ -287,29 +320,41 @@ class ProcessNewClientsController extends Controller
         if (isset($clientData['cidade']) && isset($establishment['cidade']['nome'])) {
             $clientCidade = trim(strtolower($clientData['cidade']));
             $cnpjCidade = trim(strtolower($establishment['cidade']['nome']));
-            if ($clientCidade !== $cnpjCidade) {
-                $errors[] = "Cidade não confere";
+            if ($clientCidade === $cnpjCidade) {
+                $validation['campos_validados'][] = 'cidade';
+                $validation['total_validados']++;
+            } else {
+                $validation['campos_erro'][] = "Cidade nao confere com o CNPJ.ws";
+                $validation['total_erros']++;
             }
         }
 
         if (isset($clientData['estado']) && isset($establishment['estado']['sigla'])) {
             $clientEstado = trim(strtoupper($clientData['estado']));
             $cnpjEstado = trim(strtoupper($establishment['estado']['sigla']));
-            if ($clientEstado !== $cnpjEstado) {
-                $errors[] = "Estado não confere";
+            if ($clientEstado === $cnpjEstado) {
+                $validation['campos_validados'][] = 'estado';
+                $validation['total_validados']++;
+            } else {
+                $validation['campos_erro'][] = "Estado nao confere com o CNPJ.ws";
+                $validation['total_erros']++;
             }
         }
 
         // Validação situação cadastral
         $situacaoCadastral = $establishment['situacao_cadastral'] ?? null;
         if ($situacaoCadastral && $situacaoCadastral !== 'ATIVA') {
-            $errors[] = "Situação cadastral inválida: {$situacaoCadastral}";
+            $validation['campos_erro'][] = "Situacao cadastral invalida no CNPJ.ws: {$situacaoCadastral}";
+            $validation['total_erros']++;
+        } else {
+            $validation['campos_validados'][] = 'situacao_cadastral';
+            $validation['total_validados']++;
         }
 
-        return [
-            'valid' => empty($errors),
-            'message' => empty($errors) ? 'Dados válidos' : implode(', ', $errors)
-        ];
+        $validation['valid'] = $validation['total_erros'] === 0;
+        $validation['message'] = $validation['valid'] ? 'Todos os campos validados no CNPJ.ws' : 'Campos com divergencia no CNPJ.ws';
+
+        return $validation;
     }
 
     /**
