@@ -13,17 +13,38 @@ pipeline {
                     withCredentials([file(credentialsId: 'customer-service.env', variable: 'ENV_FILE')]) {
                         sh '''
                             cp $ENV_FILE $WORKSPACE/.env
-                            chmod 600 $WORKSPACE/.env
+                            chmod 644 $WORKSPACE/.env
+                            chown jenkins:jenkins $WORKSPACE/.env
                         '''
                     }
+                }
+            }
+        }
+        stage('Generate APP Key') {
+            steps {
+                script {
+                    sh '''
+                        # Verifica se APP_KEY já existe no .env
+                        if ! grep -q "^APP_KEY=" $WORKSPACE/.env; then
+                            echo "APP_KEY não encontrada, gerando nova chave..."
+                            # Gera uma chave base64 de 32 bytes
+                            NEW_KEY="base64:$(openssl rand -base64 32)"
+                            echo "APP_KEY=$NEW_KEY" >> $WORKSPACE/.env
+                            echo "APP_KEY gerada com sucesso"
+                        else
+                            echo "APP_KEY já existe no arquivo .env"
+                        fi
+                    '''
                 }
             }
         }
         stage('Build and Run Docker') {
             steps {
                 script {
-                    sh 'docker compose down'
-                    sh 'docker compose up -d --build'
+                    sh '''
+                        docker compose down
+                        docker compose up -d --build
+                    '''
                 }
             }
         }
