@@ -50,8 +50,8 @@ RUN ls -l ${oracle_client_dir} && ls -l ${oracle_client_dir}/sdk/include
 # Instala extensões PHP necessárias
 RUN docker-php-ext-configure intl && docker-php-ext-install intl && docker-php-ext-enable intl && \
     docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd sockets zip soap && \
-    pecl install -o -f xdebug redis openswoole && \
-    docker-php-ext-enable xdebug redis openswoole && \
+    pecl install -o -f xdebug redis && \
+    docker-php-ext-enable xdebug redis && \
     docker-php-ext-configure oci8 --with-oci8=instantclient,${oracle_client_dir} && \
     docker-php-ext-configure pdo_oci --with-pdo-oci=instantclient,${oracle_client_dir} && \
     docker-php-ext-install oci8 pdo_oci

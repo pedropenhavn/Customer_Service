@@ -166,4 +166,97 @@ class NewClientsController extends Controller
         
         return true;
     }
+
+    /**
+     * Consulta clientes com filtros avançados
+     */
+    public function consultClients(Request $request): JsonResponse
+    {
+        try {
+            $query = NewClient::query();
+
+            // Filtro por CNPJ (busca parcial)
+            if ($request->has('cnpj') && !empty($request->cnpj)) {
+                $query->where('cnpj', 'like', '%' . $request->cnpj . '%');
+            }
+
+            // Filtro por origem (filtro exato)
+            if ($request->has('origem') && !empty($request->origem)) {
+                $query->where('origem', $request->origem);
+            }
+
+            // Filtro por status (PEN, PRO, ERR, RPV, APV)
+            if ($request->has('status') && !empty($request->status)) {
+                $validStatuses = ['PEN', 'PRO', 'ERR', 'RPV', 'APV'];
+                if (in_array($request->status, $validStatuses)) {
+                    $query->where('status', $request->status);
+                }
+            }
+
+            // Filtro por flag (0 ou 1)
+            if ($request->has('flag') && $request->flag !== '') {
+                $flag = (int) $request->flag;
+                if (in_array($flag, [0, 1])) {
+                    $query->where('flag', $flag);
+                }
+            }
+
+            // Filtro por data de criação (from) - formato YYYY-MM-DD
+            if ($request->has('created_from') && !empty($request->created_from)) {
+                $query->whereDate('created_at', '>=', $request->created_from);
+            }
+
+            // Filtro por data de criação (to) - formato YYYY-MM-DD
+            if ($request->has('created_to') && !empty($request->created_to)) {
+                $query->whereDate('created_at', '<=', $request->created_to);
+            }
+
+            // Ordenação
+            $orderBy = $request->get('order_by', 'created_at');
+            $orderDirection = $request->get('order_direction', 'desc');
+            
+            // Validar direção da ordenação
+            if (!in_array(strtolower($orderDirection), ['asc', 'desc'])) {
+                $orderDirection = 'desc';
+            }
+            
+            $query->orderBy($orderBy, $orderDirection);
+
+            // Paginação
+            $perPage = (int) $request->get('per_page', 10);
+            $perPage = max(1, min(100, $perPage)); // Limitar entre 1 e 100
+            
+            $clients = $query->paginate($perPage);
+
+            return response()->json([
+                'success' => true,
+                'data' => $clients->items(),
+                'pagination' => [
+                    'current_page' => $clients->currentPage(),
+                    'last_page' => $clients->lastPage(),
+                    'per_page' => $clients->perPage(),
+                    'total' => $clients->total(),
+                    'from' => $clients->firstItem(),
+                    'to' => $clients->lastItem(),
+                ],
+                'filters_applied' => [
+                    'cnpj' => $request->get('cnpj'),
+                    'origem' => $request->get('origem'),
+                    'status' => $request->get('status'),
+                    'flag' => $request->get('flag'),
+                    'created_from' => $request->get('created_from'),
+                    'created_to' => $request->get('created_to'),
+                    'order_by' => $orderBy,
+                    'order_direction' => $orderDirection,
+                    'per_page' => $perPage
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Erro interno do servidor: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

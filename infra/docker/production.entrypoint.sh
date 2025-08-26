@@ -6,9 +6,6 @@ set -e
 # Instala as dependências do PHP com Composer
 composer install --no-interaction --no-progress --optimize-autoloader
 
-# Instala o Swoole
-php artisan octane:install --server=swoole
-
 # Limpa o cache do Laravel
 php artisan optimize:clear
 

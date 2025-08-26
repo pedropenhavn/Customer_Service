@@ -24,6 +24,9 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::get('/newClients', [NewClientsController::class, 'index']);
 Route::post('/newClients', [NewClientsController::class, 'store']);
 
+// Nova rota para consulta de clientes com filtros
+Route::get('/consultClients', [NewClientsController::class, 'consultClients']);
+
 // Rotas para processamento de clientes
 Route::prefix('process')->group(function () {
     Route::post('/pending-clients', [ProcessNewClientsController::class, 'processPendingClients']);
