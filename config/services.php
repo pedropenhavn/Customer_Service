@@ -35,4 +35,27 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | External APIs Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for external APIs used by the application.
+    |
+    */
+
+    'sintegra' => [
+        'api_key' => env('SINTEGRA_API_KEY'),
+        'api_url' => env('SINTEGRA_API_URL', 'https://api.sintegrapi.com.br/consultas/v2/cnpj-receita-federal/'),
+    ],
+
+    'cnpj_ws' => [
+        'api_key' => env('CNPJ_WS_API_KEY'),
+        'api_uri' => env('CNPJ_WS_URI', 'https://comercial.cnpj.ws/cnpj/'),
+    ],
+
+    'viacep' => [
+        'api_url' => 'https://viacep.com.br/ws/',
+    ],
+
 ];

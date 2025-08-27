@@ -38,15 +38,89 @@ pipeline {
                 }
             }
         }
+        stage('Build Frontend') {
+            steps {
+                script {
+                    sh '''
+                        echo "Instalando dependências do frontend..."
+                        cd $WORKSPACE/frontend
+                        npm ci --production=false
+                        
+                        echo "Buildando o frontend para produção..."
+                        npm run build
+                        
+                        echo "Frontend buildado com sucesso!"
+                    '''
+                }
+            }
+        }
         stage('Build and Run Docker') {
             steps {
                 script {
                     sh '''
+                        echo "Parando containers existentes..."
                         docker compose down
+                        
+                        echo "Buildando e iniciando containers..."
                         docker compose up -d --build
+                        
+                        echo "Aguardando containers iniciarem..."
+                        sleep 30
+                        
+                        echo "Verificando status dos containers..."
+                        docker compose ps
                     '''
                 }
             }
+        }
+        stage('Health Check') {
+            steps {
+                script {
+                    sh '''
+                        echo "Verificando se a aplicação está respondendo..."
+                        
+                        # Aguarda um pouco mais para garantir que tudo está funcionando
+                        sleep 10
+                        
+                        # Testa o health check
+                        if curl -f http://192.168.250.195/health; then
+                            echo "✅ Aplicação está funcionando corretamente!"
+                        else
+                            echo "❌ Aplicação não está respondendo"
+                            exit 1
+                        fi
+                        
+                        # Testa se o frontend está acessível
+                        if curl -f http://192.168.250.195/; then
+                            echo "✅ Frontend está acessível!"
+                        else
+                            echo "❌ Frontend não está acessível"
+                            exit 1
+                        fi
+                    '''
+                }
+            }
+        }
+    }
+    post {
+        always {
+            script {
+                sh '''
+                    echo "=== Status final dos containers ==="
+                    docker compose ps
+                    
+                    echo "=== Logs dos containers ==="
+                    docker compose logs --tail=50
+                '''
+            }
+        }
+        success {
+            echo "✅ Deploy realizado com sucesso!"
+            echo "🌐 Frontend: http://192.168.250.195"
+            echo "🔌 API: http://192.168.250.195/api"
+        }
+        failure {
+            echo "❌ Deploy falhou!"
         }
     }
 }

@@ -2,10 +2,10 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\NewClientsController;
-use App\Http\Controllers\ProcessNewClientsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\NewClientsController;
+use App\Http\Controllers\ProcessNewClientsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -46,9 +46,13 @@ Route::get('/dashboard/statistics', [DashboardController::class, 'getStatistics'
 Route::get('/dashboard/chart-data', [DashboardController::class, 'getChartData']);
 Route::get('/dashboard/recent-clients', [DashboardController::class, 'getRecentClients']);
 
-// Rota de health check
+// Health check route
 Route::get('/health', function () {
-    return response()->json(['status' => 'ok']);
+    return response()->json([
+        'status' => 'healthy',
+        'timestamp' => now()->toISOString(),
+        'version' => '1.0.0'
+    ]);
 });
 
 // Rota de teste simples

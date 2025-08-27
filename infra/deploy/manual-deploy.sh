@@ -3,113 +3,73 @@
 # Script de Deploy Manual para Customer Service
 # Uso: ./manual-deploy.sh
 
-set -e  # Para o script se houver erro
+set -e
 
 echo "🚀 Iniciando deploy manual do Customer Service..."
 
-# Configurações
-PROJECT_NAME="customer-service"
-REPO_URL="https://github.com/pedropenhavn/Customer_Service.git"
-BRANCH="main"
-WORKSPACE="/var/lib/jenkins/workspace/${PROJECT_NAME}"
-
-# Cores para output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
-
-# Função para log colorido
-log() {
-    echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')] $1${NC}"
-}
-
-warn() {
-    echo -e "${YELLOW}[$(date +'%Y-%m-%d %H:%M:%S')] WARNING: $1${NC}"
-}
-
-error() {
-    echo -e "${RED}[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $1${NC}"
+# Verificar se estamos no diretório correto
+if [ ! -f "docker-compose.yml" ]; then
+    echo "❌ Erro: Execute este script na raiz do projeto"
     exit 1
-}
-
-# Verificar se Docker está instalado
-if ! command -v docker &> /dev/null; then
-    error "Docker não está instalado"
 fi
 
-if ! command -v docker-compose &> /dev/null; then
-    error "Docker Compose não está instalado"
-fi
-
-# Verificar se Git está instalado
-if ! command -v git &> /dev/null; then
-    error "Git não está instalado"
-fi
-
-log "📋 Verificando pré-requisitos..."
-
-# Criar workspace se não existir
-if [ ! -d "$WORKSPACE" ]; then
-    log "📁 Criando workspace: $WORKSPACE"
-    mkdir -p "$WORKSPACE"
-fi
-
-# Navegar para o workspace
-cd "$WORKSPACE"
-
-# Clonar ou atualizar repositório
-if [ ! -d ".git" ]; then
-    log "📥 Clonando repositório..."
-    git clone -b "$BRANCH" "$REPO_URL" .
-else
-    log "🔄 Atualizando repositório..."
-    git fetch origin
-    git reset --hard origin/$BRANCH
-fi
-
-# Verificar se arquivo .env existe
+# Verificar se o .env existe
 if [ ! -f ".env" ]; then
-    warn "Arquivo .env não encontrado. Você precisa criar manualmente."
-    warn "Copie o arquivo .env.example e configure as variáveis de ambiente."
-    read -p "Deseja continuar? (y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        error "Deploy cancelado pelo usuário"
-    fi
+    echo "❌ Erro: Arquivo .env não encontrado"
+    echo "💡 Copie o env.example para .env e configure as variáveis"
+    exit 1
 fi
 
-# Parar containers existentes
-log "🛑 Parando containers existentes..."
-docker compose down --remove-orphans || true
+echo "📦 Buildando o frontend..."
+cd frontend
 
-# Construir e iniciar containers
-log "🐳 Construindo e iniciando containers..."
+# Verificar se node_modules existe
+if [ ! -d "node_modules" ]; then
+    echo "📥 Instalando dependências do frontend..."
+    npm ci --production=false
+fi
+
+echo "🔨 Buildando para produção..."
+npm run build
+
+cd ..
+
+echo "🐳 Parando containers existentes..."
+docker compose down
+
+echo "🔨 Buildando e iniciando containers..."
 docker compose up -d --build
 
-# Aguardar aplicação inicializar
-log "⏳ Aguardando aplicação inicializar..."
+echo "⏳ Aguardando containers iniciarem..."
 sleep 30
 
-# Verificar se aplicação está respondendo
-log "🏥 Verificando saúde da aplicação..."
-for i in {1..10}; do
-    if curl -f http://localhost:8899 > /dev/null 2>&1; then
-        log "✅ Aplicação está respondendo corretamente!"
-        break
-    else
-        warn "Tentativa $i/10 - Aplicação ainda não está respondendo..."
-        if [ $i -eq 10 ]; then
-            error "Aplicação não está respondendo após 10 tentativas"
-        fi
-        sleep 10
-    fi
-done
-
-# Mostrar status dos containers
-log "📊 Status dos containers:"
+echo "🔍 Verificando status dos containers..."
 docker compose ps
 
-log "🎉 Deploy concluído com sucesso!"
-log "🌐 Aplicação disponível em: http://localhost:8899"
-log "📋 Para ver logs: docker compose logs -f"
+echo "🏥 Fazendo health check..."
+sleep 10
+
+if curl -f http://192.168.250.195/health; then
+    echo "✅ Health check passou!"
+else
+    echo "❌ Health check falhou"
+    echo "📋 Logs dos containers:"
+    docker compose logs --tail=20
+    exit 1
+fi
+
+if curl -f http://192.168.250.195/; then
+    echo "✅ Frontend está acessível!"
+else
+    echo "❌ Frontend não está acessível"
+    exit 1
+fi
+
+echo ""
+echo "🎉 Deploy realizado com sucesso!"
+echo "🌐 Frontend: http://192.168.250.195"
+echo "🔌 API: http://192.168.250.195/api"
+echo "🏥 Health: http://192.168.250.195/health"
+echo ""
+echo "📋 Para ver os logs: docker compose logs -f"
+echo "🛑 Para parar: docker compose down"
