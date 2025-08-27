@@ -65,6 +65,10 @@ pipeline {
                             echo "📋 Copiando build do container para o host..."
                             docker cp app-base:/var/www/frontend/build ./frontend/
                             echo "✅ Build copiado para o host!"
+                            
+                            echo "🔄 Reiniciando container do Nginx para carregar o novo build..."
+                            docker compose restart nginx
+                            sleep 10
                         else
                             echo "❌ Frontend não foi buildado corretamente no container"
                             echo "📋 Logs do container:"
@@ -99,6 +103,8 @@ pipeline {
                             echo "✅ Frontend está acessível!"
                         else
                             echo "❌ Frontend não está acessível"
+                            echo "📋 Verificando logs do Nginx:"
+                            docker compose logs nginx
                             exit 1
                         fi
                     '''
