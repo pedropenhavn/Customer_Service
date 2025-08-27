@@ -1,24 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
+  Container,
+  Paper,
+  Typography,
   Grid,
   Card,
   CardContent,
-  Typography,
-  Container,
-  Paper,
-  Chip,
   CircularProgress,
   Alert,
+  Chip,
   LinearProgress,
-  Divider,
 } from '@mui/material';
 import {
   People,
   TrendingUp,
-  Warning,
   CheckCircle,
-  Cancel,
+  Warning,
   Schedule,
   Hub,
   Speed,
@@ -37,10 +35,10 @@ import {
   PieChart,
   Pie,
   Cell,
+  AreaChart,
+  Area,
   LineChart,
   Line,
-  Area,
-  AreaChart,
 } from 'recharts';
 import api from '../services/api';
 
@@ -87,7 +85,6 @@ const Dashboard = () => {
           overflow: 'hidden',
         }}
       >
-        {/* Animated background elements */}
         <Box
           sx={{
             position: 'absolute',
@@ -170,6 +167,27 @@ const Dashboard = () => {
     return null;
   }
 
+  // Preparar dados para os gráficos
+  const statusData = statistics.status_statistics.map(item => ({
+    name: item.label,
+    value: item.count,
+    percentage: item.percentage,
+  }));
+
+  const originData = statistics.origin_statistics.map(item => ({
+    name: item.origem,
+    value: item.total,
+  }));
+
+  const evolutionData = chartData.map(item => ({
+    date: new Date(item.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+    Pendente: item.PEN,
+    Processando: item.PRO,
+    Aprovado: item.APV,
+    Reprovado: item.RPV,
+    Erro: item.ERR,
+  }));
+
   return (
     <Box
       sx={{
@@ -177,6 +195,7 @@ const Dashboard = () => {
         background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%)',
         position: 'relative',
         overflow: 'hidden',
+        py: { xs: 2, md: 4 },
       }}
     >
       {/* Animated background elements */}
@@ -185,8 +204,8 @@ const Dashboard = () => {
           position: 'absolute',
           top: '10%',
           left: '5%',
-          width: '300px',
-          height: '300px',
+          width: { xs: '150px', md: '300px' },
+          height: { xs: '150px', md: '300px' },
           background: 'radial-gradient(circle, rgba(76, 175, 80, 0.05) 0%, transparent 70%)',
           borderRadius: '50%',
           animation: 'float 10s ease-in-out infinite',
@@ -197,430 +216,547 @@ const Dashboard = () => {
           position: 'absolute',
           bottom: '20%',
           right: '10%',
-          width: '250px',
-          height: '250px',
+          width: { xs: '120px', md: '250px' },
+          height: { xs: '120px', md: '250px' },
           background: 'radial-gradient(circle, rgba(76, 175, 80, 0.03) 0%, transparent 70%)',
           borderRadius: '50%',
           animation: 'float 12s ease-in-out infinite reverse',
         }}
       />
 
-      <Container maxWidth="xl" sx={{ pt: 4, pb: 4, position: 'relative', zIndex: 1 }}>
-        {/* Header */}
-        <Box sx={{ mb: 4, textAlign: 'center' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
-            <Hub sx={{ 
-              fontSize: 50, 
-              color: '#4caf50', 
-              mr: 2,
-              filter: 'drop-shadow(0 0 10px rgba(76, 175, 80, 0.5))'
-            }} />
-            <Typography 
-              variant="h3" 
-              sx={{ 
-                fontWeight: 700, 
-                color: 'white',
-                textShadow: '0 0 20px rgba(76, 175, 80, 0.3)',
-                letterSpacing: '2px'
-              }}
-            >
-              Validator New Clients
-            </Typography>
-          </Box>
-         
-        </Box>
+      <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 1 }}>
+        
 
-        {/* Cards de estatísticas */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
+        {/* Statistic Cards */}
+        <Grid container spacing={{ xs: 1.5, md: 2.5 }} sx={{ mb: { xs: 2, md: 4 }, justifyContent: 'center' }}>
+          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex', justifyContent: 'center' }}>
             <Card
               sx={{
-                background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%)',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
                 backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(76, 175, 80, 0.2)',
+                border: '1px solid rgba(76, 175, 80, 0.1)',
                 borderRadius: '16px',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25)',
                 transition: 'all 0.3s ease',
+                height: '100%',
+                width: '100%',
+                maxWidth: { xs: '280px', md: '320px' },
                 '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: '0 12px 40px rgba(76, 175, 80, 0.2)',
+                  transform: 'translateY(-3px)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
+                  border: '1px solid rgba(76, 175, 80, 0.15)',
                 }
               }}
             >
-              <CardContent sx={{ p: 3 }}>
-                <Box display="flex" alignItems="center">
-                  <Box
-                    sx={{
-                      p: 2,
-                      borderRadius: '12px',
-                      background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
-                      mr: 2,
-                      boxShadow: '0 4px 15px rgba(76, 175, 80, 0.3)'
-                    }}
-                  >
-                    <People sx={{ fontSize: 30, color: 'white' }} />
-                  </Box>
-                  <Box>
-                    <Typography 
-                      color="rgba(255,255,255,0.7)" 
-                      gutterBottom
-                      sx={{ fontSize: '0.9rem', fontWeight: 500 }}
-                    >
-                      Total de Clientes
-                    </Typography>
-                    <Typography 
-                      variant="h3" 
-                      sx={{ 
-                        color: 'white',
-                        fontWeight: 700,
-                        textShadow: '0 0 10px rgba(76, 175, 80, 0.3)'
-                      }}
-                    >
-                      {statistics.total_clients}
-                    </Typography>
-                  </Box>
+              <CardContent sx={{ p: { xs: 1.5, md: 2.5 }, textAlign: 'center' }}>
+                <Box
+                  sx={{
+                    background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                    borderRadius: '12px',
+                    p: { xs: 1, md: 1.5 },
+                    mb: 1.5,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: { xs: '45px', md: '55px' },
+                    height: { xs: '45px', md: '55px' },
+                  }}
+                >
+                  <People sx={{ color: 'white', fontSize: { xs: 20, md: 24 } }} />
                 </Box>
+                <Typography variant="h4" sx={{ 
+                  color: 'white', 
+                  fontWeight: 600,
+                  fontSize: { xs: '1.5rem', md: '1.75rem' },
+                  mb: 0.5
+                }}>
+                  {statistics.total_clients}
+                </Typography>
+                <Typography variant="body2" sx={{ 
+                  color: 'rgba(255,255,255,0.6)', 
+                  fontWeight: 300,
+                  fontSize: { xs: '0.75rem', md: '0.875rem' }
+                }}>
+                  Total de Clientes
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex', justifyContent: 'center' }}>
             <Card
               sx={{
-                background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%)',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
                 backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(76, 175, 80, 0.2)',
+                border: '1px solid rgba(76, 175, 80, 0.1)',
                 borderRadius: '16px',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25)',
                 transition: 'all 0.3s ease',
+                height: '100%',
+                width: '100%',
+                maxWidth: { xs: '280px', md: '320px' },
                 '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: '0 12px 40px rgba(76, 175, 80, 0.2)',
+                  transform: 'translateY(-3px)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
+                  border: '1px solid rgba(76, 175, 80, 0.15)',
                 }
               }}
             >
-              <CardContent sx={{ p: 3 }}>
-                <Box display="flex" alignItems="center">
-                  <Box
-                    sx={{
-                      p: 2,
-                      borderRadius: '12px',
-                      background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
-                      mr: 2,
-                      boxShadow: '0 4px 15px rgba(76, 175, 80, 0.3)'
-                    }}
-                  >
-                    <TrendingUp sx={{ fontSize: 30, color: 'white' }} />
-                  </Box>
-                  <Box>
-                    <Typography 
-                      color="rgba(255,255,255,0.7)" 
-                      gutterBottom
-                      sx={{ fontSize: '0.9rem', fontWeight: 500 }}
-                    >
-                      Últimos 7 dias
-                    </Typography>
-                    <Typography 
-                      variant="h3" 
-                      sx={{ 
-                        color: 'white',
-                        fontWeight: 700,
-                        textShadow: '0 0 10px rgba(76, 175, 80, 0.3)'
-                      }}
-                    >
-                      {statistics.recent_clients_7d}
-                    </Typography>
-                  </Box>
+              <CardContent sx={{ p: { xs: 1.5, md: 2.5 }, textAlign: 'center' }}>
+                <Box
+                  sx={{
+                    background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                    borderRadius: '12px',
+                    p: { xs: 1, md: 1.5 },
+                    mb: 1.5,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: { xs: '45px', md: '55px' },
+                    height: { xs: '45px', md: '55px' },
+                  }}
+                >
+                  <TrendingUp sx={{ color: 'white', fontSize: { xs: 20, md: 24 } }} />
                 </Box>
+                <Typography variant="h4" sx={{ 
+                  color: 'white', 
+                  fontWeight: 600,
+                  fontSize: { xs: '1.5rem', md: '1.75rem' },
+                  mb: 0.5
+                }}>
+                  {statistics.recent_clients_7d}
+                </Typography>
+                <Typography variant="body2" sx={{ 
+                  color: 'rgba(255,255,255,0.6)', 
+                  fontWeight: 300,
+                  fontSize: { xs: '0.75rem', md: '0.875rem' }
+                }}>
+                  Últimos 7 dias
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex', justifyContent: 'center' }}>
             <Card
               sx={{
-                background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%)',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
                 backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(76, 175, 80, 0.2)',
+                border: '1px solid rgba(76, 175, 80, 0.1)',
                 borderRadius: '16px',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25)',
                 transition: 'all 0.3s ease',
+                height: '100%',
+                width: '100%',
+                maxWidth: { xs: '280px', md: '320px' },
                 '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: '0 12px 40px rgba(76, 175, 80, 0.2)',
+                  transform: 'translateY(-3px)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
+                  border: '1px solid rgba(76, 175, 80, 0.15)',
                 }
               }}
             >
-              <CardContent sx={{ p: 3 }}>
-                <Box display="flex" alignItems="center">
-                  <Box
-                    sx={{
-                      p: 2,
-                      borderRadius: '12px',
-                      background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
-                      mr: 2,
-                      boxShadow: '0 4px 15px rgba(76, 175, 80, 0.3)'
-                    }}
-                  >
-                    <CheckCircle sx={{ fontSize: 30, color: 'white' }} />
-                  </Box>
-                  <Box>
-                    <Typography 
-                      color="rgba(255,255,255,0.7)" 
-                      gutterBottom
-                      sx={{ fontSize: '0.9rem', fontWeight: 500 }}
-                    >
-                      Aprovados
-                    </Typography>
-                    <Typography 
-                      variant="h3" 
-                      sx={{ 
-                        color: 'white',
-                        fontWeight: 700,
-                        textShadow: '0 0 10px rgba(76, 175, 80, 0.3)'
-                      }}
-                    >
-                      {statistics.status_statistics.find(s => s.code === 'APV')?.count || 0}
-                    </Typography>
-                  </Box>
+              <CardContent sx={{ p: { xs: 1.5, md: 2.5 }, textAlign: 'center' }}>
+                <Box
+                  sx={{
+                    background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
+                    borderRadius: '12px',
+                    p: { xs: 1, md: 1.5 },
+                    mb: 1.5,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: { xs: '45px', md: '55px' },
+                    height: { xs: '45px', md: '55px' },
+                  }}
+                >
+                  <CheckCircle sx={{ color: 'white', fontSize: { xs: 20, md: 24 } }} />
                 </Box>
+                <Typography variant="h4" sx={{ 
+                  color: 'white', 
+                  fontWeight: 600,
+                  fontSize: { xs: '1.5rem', md: '1.75rem' },
+                  mb: 0.5
+                }}>
+                  {statistics.status_statistics.find(s => s.code === 'APV')?.count || 0}
+                </Typography>
+                <Typography variant="body2" sx={{ 
+                  color: 'rgba(255,255,255,0.6)', 
+                  fontWeight: 300,
+                  fontSize: { xs: '0.75rem', md: '0.875rem' }
+                }}>
+                  Aprovados
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
 
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex', justifyContent: 'center' }}>
             <Card
               sx={{
-                background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%)',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
                 backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(76, 175, 80, 0.2)',
+                border: '1px solid rgba(76, 175, 80, 0.1)',
                 borderRadius: '16px',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25)',
                 transition: 'all 0.3s ease',
+                height: '100%',
+                width: '100%',
+                maxWidth: { xs: '280px', md: '320px' },
                 '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: '0 12px 40px rgba(76, 175, 80, 0.2)',
+                  transform: 'translateY(-3px)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
+                  border: '1px solid rgba(76, 175, 80, 0.15)',
                 }
               }}
             >
-              <CardContent sx={{ p: 3 }}>
-                <Box display="flex" alignItems="center">
-                  <Box
-                    sx={{
-                      p: 2,
-                      borderRadius: '12px',
-                      background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
-                      mr: 2,
-                      boxShadow: '0 4px 15px rgba(76, 175, 80, 0.3)'
-                    }}
-                  >
-                    <Warning sx={{ fontSize: 30, color: 'white' }} />
-                  </Box>
-                  <Box>
-                    <Typography 
-                      color="rgba(255,255,255,0.7)" 
-                      gutterBottom
-                      sx={{ fontSize: '0.9rem', fontWeight: 500 }}
-                    >
-                      Pendentes
-                    </Typography>
-                    <Typography 
-                      variant="h3" 
-                      sx={{ 
-                        color: 'white',
-                        fontWeight: 700,
-                        textShadow: '0 0 10px rgba(76, 175, 80, 0.3)'
-                      }}
-                    >
-                      {statistics.status_statistics.find(s => s.code === 'PEN')?.count || 0}
-                    </Typography>
-                  </Box>
+              <CardContent sx={{ p: { xs: 1.5, md: 2.5 }, textAlign: 'center' }}>
+                <Box
+                  sx={{
+                    background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',
+                    borderRadius: '12px',
+                    p: { xs: 1, md: 1.5 },
+                    mb: 1.5,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: { xs: '45px', md: '55px' },
+                    height: { xs: '45px', md: '55px' },
+                  }}
+                >
+                  <Warning sx={{ color: 'white', fontSize: { xs: 20, md: 24 } }} />
                 </Box>
+                <Typography variant="h4" sx={{ 
+                  color: 'white', 
+                  fontWeight: 600,
+                  fontSize: { xs: '1.5rem', md: '1.75rem' },
+                  mb: 0.5
+                }}>
+                  {statistics.status_statistics.find(s => s.code === 'PEN')?.count || 0}
+                </Typography>
+                <Typography variant="body2" sx={{ 
+                  color: 'rgba(255,255,255,0.6)', 
+                  fontWeight: 300,
+                  fontSize: { xs: '0.75rem', md: '0.875rem' }
+                }}>
+                  Pendentes
+                </Typography>
               </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Novos Cards Adicionados */}
+          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex', justifyContent: 'center' }}>
+            <Card
+              sx={{
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(76, 175, 80, 0.1)',
+                borderRadius: '16px',
+                boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25)',
+                transition: 'all 0.3s ease',
+                height: '100%',
+                width: '100%',
+                maxWidth: { xs: '280px', md: '320px' },
+                '&:hover': {
+                  transform: 'translateY(-3px)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
+                  border: '1px solid rgba(76, 175, 80, 0.15)',
+                }
+              }}
+            >
+              <CardContent sx={{ p: { xs: 1.5, md: 2.5 }, textAlign: 'center' }}>
+                <Box
+                  sx={{
+                    background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)',
+                    borderRadius: '12px',
+                    p: { xs: 1, md: 1.5 },
+                    mb: 1.5,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: { xs: '45px', md: '55px' },
+                    height: { xs: '45px', md: '55px' },
+                  }}
+                >
+                  <Assessment sx={{ color: 'white', fontSize: { xs: 20, md: 24 } }} />
+                </Box>
+                <Typography variant="h4" sx={{ 
+                  color: 'white', 
+                  fontWeight: 600,
+                  fontSize: { xs: '1.5rem', md: '1.75rem' },
+                  mb: 0.5
+                }}>
+                  {statistics.total_clients > 0 ? Math.round((statistics.status_statistics.find(s => s.code === 'APV')?.count || 0) / statistics.total_clients * 100) : 0}%
+                </Typography>
+                <Typography variant="body2" sx={{ 
+                  color: 'rgba(255,255,255,0.6)', 
+                  fontWeight: 300,
+                  fontSize: { xs: '0.75rem', md: '0.875rem' }
+                }}>
+                  Taxa de Aprovação
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex', justifyContent: 'center' }}>
+            <Card
+              sx={{
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(76, 175, 80, 0.1)',
+                borderRadius: '16px',
+                boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25)',
+                transition: 'all 0.3s ease',
+                height: '100%',
+                width: '100%',
+                maxWidth: { xs: '280px', md: '320px' },
+                '&:hover': {
+                  transform: 'translateY(-3px)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
+                  border: '1px solid rgba(76, 175, 80, 0.15)',
+                }
+              }}
+            >
+              <CardContent sx={{ p: { xs: 1.5, md: 2.5 }, textAlign: 'center' }}>
+                <Box
+                  sx={{
+                    background: 'linear-gradient(135deg, #F44336 0%, #D32F2F 100%)',
+                    borderRadius: '12px',
+                    p: { xs: 1, md: 1.5 },
+                    mb: 1.5,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: { xs: '45px', md: '55px' },
+                    height: { xs: '45px', md: '55px' },
+                  }}
+                >
+                  <Security sx={{ color: 'white', fontSize: { xs: 20, md: 24 } }} />
+                </Box>
+                <Typography variant="h4" sx={{ 
+                  color: 'white', 
+                  fontWeight: 600,
+                  fontSize: { xs: '1.5rem', md: '1.75rem' },
+                  mb: 0.5
+                }}>
+                  {statistics.status_statistics.find(s => s.code === 'RPV')?.count || 0}
+                </Typography>
+                <Typography variant="body2" sx={{ 
+                  color: 'rgba(255,255,255,0.6)', 
+                  fontWeight: 300,
+                  fontSize: { xs: '0.75rem', md: '0.875rem' }
+                }}>
+                  Reprovados
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex', justifyContent: 'center' }}>
+            <Card
+              sx={{
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(76, 175, 80, 0.1)',
+                borderRadius: '16px',
+                boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25)',
+                transition: 'all 0.3s ease',
+                height: '100%',
+                width: '100%',
+                maxWidth: { xs: '280px', md: '320px' },
+                '&:hover': {
+                  transform: 'translateY(-3px)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
+                  border: '1px solid rgba(76, 175, 80, 0.15)',
+                }
+              }}
+            >
+              <CardContent sx={{ p: { xs: 1.5, md: 2.5 }, textAlign: 'center' }}>
+                <Box
+                  sx={{
+                    background: 'linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%)',
+                    borderRadius: '12px',
+                    p: { xs: 1, md: 1.5 },
+                    mb: 1.5,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: { xs: '45px', md: '55px' },
+                    height: { xs: '45px', md: '55px' },
+                  }}
+                >
+                  <Schedule sx={{ color: 'white', fontSize: { xs: 20, md: 24 } }} />
+                </Box>
+                <Typography variant="h4" sx={{ 
+                  color: 'white', 
+                  fontWeight: 600,
+                  fontSize: { xs: '1.5rem', md: '1.75rem' },
+                  mb: 0.5
+                }}>
+                  {statistics.status_statistics.find(s => s.code === 'PRO')?.count || 0}
+                </Typography>
+                <Typography variant="body2" sx={{ 
+                  color: 'rgba(255,255,255,0.6)', 
+                  fontWeight: 300,
+                  fontSize: { xs: '0.75rem', md: '0.875rem' }
+                }}>
+                  Processando
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3} sx={{ display: 'flex', justifyContent: 'center' }}>
+            <Card
+              sx={{
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(76, 175, 80, 0.1)',
+                borderRadius: '16px',
+                boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25)',
+                transition: 'all 0.3s ease',
+                height: '100%',
+                width: '100%',
+                maxWidth: { xs: '280px', md: '320px' },
+                '&:hover': {
+                  transform: 'translateY(-3px)',
+                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35)',
+                  border: '1px solid rgba(76, 175, 80, 0.15)',
+                }
+              }}
+            >
+            
             </Card>
           </Grid>
         </Grid>
 
-        {/* Gráficos */}
-        <Grid container spacing={3}>
-          {/* Gráfico de área - Evolução temporal */}
-          <Grid item xs={12}>
+        {/* Charts */}
+        <Grid container spacing={{ xs: 1.5, md: 2.5 }} sx={{ justifyContent: 'center' }}>
+          {/* Evolução dos Clientes */}
+          <Grid item xs={12} lg={8} sx={{ display: 'flex', justifyContent: 'center' }}>
             <Paper
               sx={{
-                p: 4,
                 background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
                 backdropFilter: 'blur(20px)',
                 border: '1px solid rgba(76, 175, 80, 0.1)',
-                borderRadius: '20px',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                borderRadius: '16px',
+                boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25)',
+                p: { xs: 1.5, md: 3 },
+                height: '100%',
+                width: '100%',
+                maxWidth: '100%',
               }}
             >
-              <Typography 
-                variant="h5" 
-                gutterBottom
-                sx={{ 
-                  color: 'white',
-                  fontWeight: 600,
-                  mb: 3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1
-                }}
-              >
-                <TrendingUp sx={{ color: '#4caf50' }} />
+              <Typography variant="h5" sx={{ 
+                color: 'white', 
+                fontWeight: 500, 
+                mb: { xs: 1.5, md: 2.5 }, 
+                display: 'flex', 
+                alignItems: 'center',
+                fontSize: { xs: '1.125rem', md: '1.25rem' }
+              }}>
+                <TrendingUp sx={{ mr: 1, color: '#4caf50', fontSize: { xs: 20, md: 24 } }} />
                 Evolução dos Clientes (Últimos 30 dias)
               </Typography>
-              <ResponsiveContainer width="100%" height={400}>
-                <AreaChart data={chartData}>
+              <ResponsiveContainer width="100%" height={280}>
+                <AreaChart data={evolutionData}>
                   <defs>
-                    <linearGradient id="colorPEN" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="colorPendente" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#FF9800" stopOpacity={0.8}/>
                       <stop offset="95%" stopColor="#FF9800" stopOpacity={0.1}/>
                     </linearGradient>
-                    <linearGradient id="colorPRO" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="colorProcessando" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#2196F3" stopOpacity={0.8}/>
                       <stop offset="95%" stopColor="#2196F3" stopOpacity={0.1}/>
                     </linearGradient>
-                    <linearGradient id="colorAPV" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="colorAprovado" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#4caf50" stopOpacity={0.8}/>
                       <stop offset="95%" stopColor="#4caf50" stopOpacity={0.1}/>
+                    </linearGradient>
+                    <linearGradient id="colorReprovado" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F44336" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#F44336" stopOpacity={0.1}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
                   <XAxis 
                     dataKey="date" 
                     stroke="rgba(255,255,255,0.7)"
-                    tick={{ fill: 'rgba(255,255,255,0.7)' }}
+                    tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }}
                   />
                   <YAxis 
                     stroke="rgba(255,255,255,0.7)"
-                    tick={{ fill: 'rgba(255,255,255,0.7)' }}
+                    tick={{ fill: 'rgba(255,255,255,0.7)', fontSize: 12 }}
                   />
                   <Tooltip 
                     contentStyle={{
-                      backgroundColor: 'rgba(0,0,0,0.8)',
+                      backgroundColor: 'rgba(0,0,0,0.9)',
                       border: '1px solid rgba(76, 175, 80, 0.3)',
                       borderRadius: '8px',
-                      color: 'white'
+                      color: 'white',
+                      fontSize: '12px',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.5)'
                     }}
+                    formatter={(value, name) => [value, name]}
+                    labelFormatter={(label) => `Data: ${label}`}
                   />
                   <Legend 
-                    wrapperStyle={{ color: 'white' }}
+                    wrapperStyle={{ 
+                      color: 'white', 
+                      fontSize: '12px',
+                      paddingTop: '10px'
+                    }} 
                   />
-                  <Area type="monotone" dataKey="PEN" stackId="1" stroke="#FF9800" fillOpacity={1} fill="url(#colorPEN)" name="Pendente" />
-                  <Area type="monotone" dataKey="PRO" stackId="1" stroke="#2196F3" fillOpacity={1} fill="url(#colorPRO)" name="Processando" />
-                  <Area type="monotone" dataKey="APV" stackId="1" stroke="#4caf50" fillOpacity={1} fill="url(#colorAPV)" name="Aprovado" />
+                  <Area type="monotone" dataKey="Pendente" stackId="1" stroke="#FF9800" fill="url(#colorPendente)" />
+                  <Area type="monotone" dataKey="Processando" stackId="1" stroke="#2196F3" fill="url(#colorProcessando)" />
+                  <Area type="monotone" dataKey="Aprovado" stackId="1" stroke="#4caf50" fill="url(#colorAprovado)" />
+                  <Area type="monotone" dataKey="Reprovado" stackId="1" stroke="#F44336" fill="url(#colorReprovado)" />
                 </AreaChart>
               </ResponsiveContainer>
             </Paper>
           </Grid>
 
-          {/* Gráfico de barras - Status */}
-          <Grid item xs={12} md={8}>
+          {/* Distribuição por Status */}
+          <Grid item xs={12} lg={4} sx={{ display: 'flex', justifyContent: 'center' }}>
             <Paper
               sx={{
-                p: 4,
                 background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
                 backdropFilter: 'blur(20px)',
                 border: '1px solid rgba(76, 175, 80, 0.1)',
-                borderRadius: '20px',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                borderRadius: '16px',
+                boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25)',
+                p: { xs: 1.5, md: 3 },
+                height: '100%',
+                width: '100%',
+                maxWidth: '100%',
               }}
             >
-              <Typography 
-                variant="h5" 
-                gutterBottom
-                sx={{ 
-                  color: 'white',
-                  fontWeight: 600,
-                  mb: 3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1
-                }}
-              >
-                <Assessment sx={{ color: '#4caf50' }} />
+              <Typography variant="h5" sx={{ 
+                color: 'white', 
+                fontWeight: 500, 
+                mb: { xs: 1.5, md: 2.5 }, 
+                display: 'flex', 
+                alignItems: 'center',
+                fontSize: { xs: '1.125rem', md: '1.25rem' }
+              }}>
+                <Assessment sx={{ mr: 1, color: '#4caf50', fontSize: { xs: 20, md: 24 } }} />
                 Distribuição por Status
               </Typography>
-              <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={statistics.status_statistics}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-                  <XAxis 
-                    dataKey="label" 
-                    stroke="rgba(255,255,255,0.7)"
-                    tick={{ fill: 'rgba(255,255,255,0.7)' }}
-                  />
-                  <YAxis 
-                    stroke="rgba(255,255,255,0.7)"
-                    tick={{ fill: 'rgba(255,255,255,0.7)' }}
-                  />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'rgba(0,0,0,0.8)',
-                      border: '1px solid rgba(76, 175, 80, 0.3)',
-                      borderRadius: '8px',
-                      color: 'white'
-                    }}
-                  />
-                  <Legend 
-                    wrapperStyle={{ color: 'white' }}
-                  />
-                  <Bar 
-                    dataKey="count" 
-                    fill="#4caf50"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </Paper>
-          </Grid>
-
-          {/* Gráfico de pizza - Status */}
-          <Grid item xs={12} md={4}>
-            <Paper
-              sx={{
-                p: 4,
-                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
-                backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(76, 175, 80, 0.1)',
-                borderRadius: '20px',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-              }}
-            >
-              <Typography 
-                variant="h5" 
-                gutterBottom
-                sx={{ 
-                  color: 'white',
-                  fontWeight: 600,
-                  mb: 3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1
-                }}
-              >
-                <Hub sx={{ color: '#4caf50' }} />
-                Status dos Clientes
-              </Typography>
-              <ResponsiveContainer width="100%" height={350}>
+              <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie
-                    data={statistics.status_statistics}
+                    data={statusData}
                     cx="50%"
                     cy="50%"
-                    labelLine={false}
-                    label={({ label, percentage }) => `${label} ${percentage}%`}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="count"
+                    innerRadius={40}
+                    outerRadius={65}
+                    paddingAngle={3}
+                    dataKey="value"
                   >
-                    {statistics.status_statistics.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={COLORS[index % COLORS.length]}
-                        stroke="rgba(0,0,0,0.3)"
-                        strokeWidth={2}
-                      />
+                    {statusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip 
@@ -628,89 +764,115 @@ const Dashboard = () => {
                       backgroundColor: 'rgba(0,0,0,0.8)',
                       border: '1px solid rgba(76, 175, 80, 0.3)',
                       borderRadius: '8px',
-                      color: 'white'
+                      color: 'white',
+                      fontSize: '12px'
                     }}
                   />
                 </PieChart>
               </ResponsiveContainer>
+              <Box sx={{ mt: 1.5 }}>
+                {statusData.map((item, index) => (
+                  <Box key={item.name} sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    mb: 0.75,
+                    p: 0.75,
+                    borderRadius: '6px',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,0.03)',
+                    }
+                  }}>
+                    <Box
+                      sx={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: '50%',
+                        backgroundColor: COLORS[index % COLORS.length],
+                        mr: 1,
+                        boxShadow: '0 0 6px rgba(76, 175, 80, 0.2)',
+                      }}
+                    />
+                    <Typography variant="body2" sx={{ 
+                      color: 'rgba(255,255,255,0.7)', 
+                      flex: 1,
+                      fontSize: { xs: '0.7rem', md: '0.8rem' }
+                    }}>
+                      {item.name}
+                    </Typography>
+                    <Typography variant="body2" sx={{ 
+                      color: 'white', 
+                      fontWeight: 500,
+                      fontSize: { xs: '0.7rem', md: '0.8rem' }
+                    }}>
+                      {item.value} ({item.percentage}%)
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
             </Paper>
           </Grid>
 
-          {/* Estatísticas por origem */}
-          <Grid item xs={12} md={6}>
+          {/* Estatísticas por Origem */}
+          <Grid item xs={12} md={6} sx={{ display: 'flex', justifyContent: 'center' }}>
             <Paper
               sx={{
-                p: 4,
                 background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
                 backdropFilter: 'blur(20px)',
                 border: '1px solid rgba(76, 175, 80, 0.1)',
-                borderRadius: '20px',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                borderRadius: '16px',
+                boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25)',
+                p: { xs: 1.5, md: 3 },
+                height: '100%',
+                width: '100%',
+                maxWidth: '100%',
               }}
             >
-              <Typography 
-                variant="h5" 
-                gutterBottom
-                sx={{ 
-                  color: 'white',
-                  fontWeight: 600,
-                  mb: 3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1
-                }}
-              >
-                <Security sx={{ color: '#4caf50' }} />
-                Clientes por Origem
+              <Typography variant="h5" sx={{ 
+                color: 'white', 
+                fontWeight: 500, 
+                mb: { xs: 1.5, md: 2.5 }, 
+                display: 'flex', 
+                alignItems: 'center',
+                fontSize: { xs: '1.125rem', md: '1.25rem' }
+              }}>
+                <Security sx={{ mr: 1, color: '#4caf50', fontSize: { xs: 20, md: 24 } }} />
+                Estatísticas por Origem
               </Typography>
-              <Box>
-                {statistics.origin_statistics.map((origin, index) => (
-                  <Box
-                    key={origin.origem}
-                    sx={{ 
-                      mb: 2, 
-                      p: 2, 
-                      background: 'rgba(76, 175, 80, 0.05)',
-                      borderRadius: '12px',
-                      border: '1px solid rgba(76, 175, 80, 0.1)',
-                      transition: 'all 0.3s ease',
-                      '&:hover': {
-                        background: 'rgba(76, 175, 80, 0.1)',
-                        transform: 'translateX(5px)',
-                      }
-                    }}
-                  >
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
-                      <Typography 
-                        variant="body1"
-                        sx={{ 
-                          color: 'white',
-                          fontWeight: 500
-                        }}
-                      >
-                        {origin.origem || 'Não informado'}
+              <Box sx={{ mb: 2.5 }}>
+                {originData.map((item, index) => (
+                  <Box key={item.name} sx={{ mb: 2 }}>
+                    <Box sx={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      mb: 1,
+                      alignItems: 'center'
+                    }}>
+                      <Typography variant="body2" sx={{ 
+                        color: 'rgba(255,255,255,0.7)',
+                        fontWeight: 400,
+                        fontSize: { xs: '0.8rem', md: '0.875rem' }
+                      }}>
+                        {item.name}
                       </Typography>
-                      <Chip
-                        label={origin.total}
-                        sx={{
-                          background: 'linear-gradient(135deg, #4caf50 0%, #45a049 100%)',
-                          color: 'white',
-                          fontWeight: 600,
-                          boxShadow: '0 2px 8px rgba(76, 175, 80, 0.3)'
-                        }}
-                      />
+                      <Typography variant="body2" sx={{ 
+                        color: 'white', 
+                        fontWeight: 500,
+                        fontSize: { xs: '0.8rem', md: '0.875rem' }
+                      }}>
+                        {item.value}
+                      </Typography>
                     </Box>
                     <LinearProgress
                       variant="determinate"
-                      value={(origin.total / Math.max(...statistics.origin_statistics.map(o => o.total))) * 100}
+                      value={(item.value / Math.max(...originData.map(d => d.value))) * 100}
                       sx={{
-                        mt: 1,
-                        height: 6,
-                        borderRadius: 3,
-                        backgroundColor: 'rgba(255,255,255,0.1)',
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor: 'rgba(255,255,255,0.08)',
                         '& .MuiLinearProgress-bar': {
-                          background: 'linear-gradient(90deg, #4caf50 0%, #45a049 100%)',
-                          borderRadius: 3,
+                          background: `linear-gradient(90deg, ${COLORS[index % COLORS.length]} 0%, ${COLORS[(index + 1) % COLORS.length]} 100%)`,
+                          borderRadius: 4,
+                          boxShadow: '0 0 8px rgba(76, 175, 80, 0.2)',
                         }
                       }}
                     />
@@ -720,96 +882,96 @@ const Dashboard = () => {
             </Paper>
           </Grid>
 
-          {/* Estatísticas por flag */}
-          <Grid item xs={12} md={6}>
+          {/* Status de Flag */}
+          <Grid item xs={12} md={6} sx={{ display: 'flex', justifyContent: 'center' }}>
             <Paper
               sx={{
-                p: 4,
                 background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)',
                 backdropFilter: 'blur(20px)',
                 border: '1px solid rgba(76, 175, 80, 0.1)',
-                borderRadius: '20px',
-                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+                borderRadius: '16px',
+                boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25)',
+                p: { xs: 1.5, md: 3 },
+                height: '100%',
+                width: '100%',
+                maxWidth: '100%',
               }}
             >
-              <Typography 
-                variant="h5" 
-                gutterBottom
-                sx={{ 
-                  color: 'white',
-                  fontWeight: 600,
-                  mb: 3,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1
-                }}
-              >
-                <Speed sx={{ color: '#4caf50' }} />
+              <Typography variant="h5" sx={{ 
+                color: 'white', 
+                fontWeight: 500, 
+                mb: { xs: 1.5, md: 2.5 }, 
+                display: 'flex', 
+                alignItems: 'center',
+                fontSize: { xs: '1.125rem', md: '1.25rem' }
+              }}>
+                <Speed sx={{ mr: 1, color: '#4caf50', fontSize: { xs: 20, md: 24 } }} />
                 Status de Flag
               </Typography>
-              <Box>
-                <Box
-                  sx={{ 
-                    mb: 3, 
-                    p: 3, 
-                    background: 'rgba(76, 175, 80, 0.05)',
-                    borderRadius: '16px',
-                    border: '1px solid rgba(76, 175, 80, 0.1)',
-                    textAlign: 'center'
-                  }}
-                >
-                  <Typography 
-                    variant="h4"
-                    sx={{ 
-                      color: 'white',
-                      fontWeight: 700,
-                      mb: 1,
-                      textShadow: '0 0 10px rgba(76, 175, 80, 0.3)'
+              <Grid container spacing={1.5}>
+                <Grid item xs={6}>
+                  <Box
+                    sx={{
+                      background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(76, 175, 80, 0.08) 100%)',
+                      borderRadius: '12px',
+                      p: { xs: 1.5, md: 2 },
+                      textAlign: 'center',
+                      border: '1px solid rgba(76, 175, 80, 0.2)',
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
                     }}
                   >
-                    {statistics.flag_statistics.flag_0}
-                  </Typography>
-                  <Typography 
-                    variant="body1"
-                    sx={{ 
-                      color: 'rgba(255,255,255,0.7)',
-                      fontWeight: 500
+                    <Typography variant="h3" sx={{ 
+                      color: '#4caf50', 
+                      fontWeight: 600, 
+                      mb: 0.5,
+                      fontSize: { xs: '1.5rem', md: '2rem' }
+                    }}>
+                      {statistics.flag_statistics.flag_1}
+                    </Typography>
+                    <Typography variant="body2" sx={{ 
+                      color: 'rgba(255,255,255,0.7)', 
+                      fontWeight: 400,
+                      fontSize: { xs: '0.75rem', md: '0.875rem' }
+                    }}>
+                      Validado
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6}>
+                  <Box
+                    sx={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)',
+                      borderRadius: '12px',
+                      p: { xs: 1.5, md: 2 },
+                      textAlign: 'center',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
                     }}
                   >
-                    Flag 0
-                  </Typography>
-                </Box>
-                <Box
-                  sx={{ 
-                    p: 3, 
-                    background: 'rgba(76, 175, 80, 0.1)',
-                    borderRadius: '16px',
-                    border: '1px solid rgba(76, 175, 80, 0.2)',
-                    textAlign: 'center'
-                  }}
-                >
-                  <Typography 
-                    variant="h4"
-                    sx={{ 
-                      color: 'white',
-                      fontWeight: 700,
-                      mb: 1,
-                      textShadow: '0 0 10px rgba(76, 175, 80, 0.3)'
-                    }}
-                  >
-                    {statistics.flag_statistics.flag_1}
-                  </Typography>
-                  <Typography 
-                    variant="body1"
-                    sx={{ 
-                      color: 'rgba(255,255,255,0.7)',
-                      fontWeight: 500
-                    }}
-                  >
-                    Flag 1
-                  </Typography>
-                </Box>
-              </Box>
+                    <Typography variant="h3" sx={{ 
+                      color: 'white', 
+                      fontWeight: 600, 
+                      mb: 0.5,
+                      fontSize: { xs: '1.5rem', md: '2rem' }
+                    }}>
+                      {statistics.flag_statistics.flag_0}
+                    </Typography>
+                    <Typography variant="body2" sx={{ 
+                      color: 'rgba(255,255,255,0.7)', 
+                      fontWeight: 400,
+                      fontSize: { xs: '0.75rem', md: '0.875rem' }
+                    }}>
+                      Pendente
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
             </Paper>
           </Grid>
         </Grid>
