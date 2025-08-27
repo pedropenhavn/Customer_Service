@@ -15,6 +15,19 @@ class ApiTokenMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Excluir rotas de autenticação do middleware de token
+        $excludedPaths = [
+            '/api/auth/login',
+            '/api/auth/register',
+            '/api/auth/logout',
+            '/api/auth/me',
+            '/api/health',
+        ];
+        
+        if (in_array($request->path(), $excludedPaths)) {
+            return $next($request);
+        }
+        
         // Obter o token do header Authorization
         $authHeader = $request->header('Authorization');
         

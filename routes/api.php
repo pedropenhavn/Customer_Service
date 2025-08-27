@@ -4,6 +4,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\NewClientsController;
 use App\Http\Controllers\ProcessNewClientsController;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,7 +35,32 @@ Route::prefix('process')->group(function () {
     Route::get('/statistics', [ProcessNewClientsController::class, 'getStatistics']);
 });
 
+// Rotas de autenticação
+Route::post('/auth/register', [AuthController::class, 'register']);
+Route::post('/auth/login', [AuthController::class, 'login']);
+Route::post('/auth/logout', [AuthController::class, 'logout']);
+Route::get('/auth/me', [AuthController::class, 'me']);
+
+// Rotas do dashboard
+Route::get('/dashboard/statistics', [DashboardController::class, 'getStatistics']);
+Route::get('/dashboard/chart-data', [DashboardController::class, 'getChartData']);
+Route::get('/dashboard/recent-clients', [DashboardController::class, 'getRecentClients']);
+
 // Rota de health check
 Route::get('/health', function () {
     return response()->json(['status' => 'ok']);
+});
+
+// Rota de teste simples
+Route::get('/test', function () {
+    return response()->json(['message' => 'API funcionando!']);
+});
+
+// Rota de teste de login
+Route::post('/test-login', function (Request $request) {
+    return response()->json([
+        'success' => true,
+        'message' => 'Teste de login funcionando!',
+        'data' => $request->all()
+    ]);
 });
