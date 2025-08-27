@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-// Em produção, a API estará disponível na mesma URL do frontend com /api
+// Em produção, a API estará disponível na porta 8899
 const API_BASE_URL = process.env.REACT_APP_API_URL || 
     (process.env.NODE_ENV === 'production' 
-        ? `${window.location.origin}/api` 
+        ? 'http://192.168.250.195:8899' 
         : 'http://localhost:8899');
 
 const api = axios.create({
