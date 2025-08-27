@@ -12,6 +12,27 @@ if ! grep -q "^APP_KEY=base64" .env; then
     php artisan key:generate
 fi
 
+# Build do frontend se não existir
+if [ ! -d "frontend/build" ]; then
+    echo "🔨 Buildando frontend..."
+    cd frontend
+    
+    # Instalar dependências se node_modules não existir
+    if [ ! -d "node_modules" ]; then
+        echo "📦 Instalando dependências do frontend..."
+        npm ci --production=false
+    fi
+    
+    # Build para produção
+    echo "🔨 Buildando para produção..."
+    npm run build
+    
+    cd ..
+    echo "✅ Frontend buildado com sucesso!"
+else
+    echo "✅ Frontend já está buildado"
+fi
+
 # Executar migrations se necessário
 php artisan migrate --force
 

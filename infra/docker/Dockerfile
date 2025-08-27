@@ -21,6 +21,10 @@ RUN apt-get update && apt-get install -y \
     libbrotli-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Instala Node.js 18.x
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
+
 # Define o fuso horário do sistema
 RUN ln -sf /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime && echo "America/Sao_Paulo" > /etc/timezone
 
