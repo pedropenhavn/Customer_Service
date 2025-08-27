@@ -50,18 +50,23 @@ pipeline {
                         docker compose up -d --build
                         
                         echo "⏳ Aguardando containers iniciarem e frontend ser buildado..."
-                        sleep 60
+                        echo "⏰ Aguardando 90 segundos para o build completo..."
+                        sleep 90
                         
                         echo "🔍 Verificando status dos containers..."
                         docker compose ps
                         
                         echo "📋 Verificando se o frontend foi buildado..."
-                        if [ -d "frontend/build" ]; then
+                        if [ -d "frontend/build" ] && [ -f "frontend/build/index.html" ]; then
                             echo "✅ Frontend buildado com sucesso!"
+                            echo "📁 Arquivos no build:"
+                            ls -la frontend/build/
                         else
-                            echo "❌ Frontend não foi buildado"
+                            echo "❌ Frontend não foi buildado corretamente"
                             echo "📋 Logs do container:"
                             docker compose logs app
+                            echo "📁 Verificando diretório frontend:"
+                            ls -la frontend/
                             exit 1
                         fi
                     '''
@@ -75,7 +80,7 @@ pipeline {
                         echo "🏥 Verificando se a aplicação está respondendo..."
                         
                         # Aguarda um pouco mais para garantir que tudo está funcionando
-                        sleep 10
+                        sleep 15
                         
                         # Testa o health check
                         if curl -f http://192.168.250.195/health; then
