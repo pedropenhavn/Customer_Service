@@ -15,6 +15,16 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [checked, setChecked] = useState(false);
+  const [token, setToken] = useState(localStorage.getItem('api_token'));
+
+  // Configurar token no axios quando mudar
+  useEffect(() => {
+    if (token) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    } else {
+      delete api.defaults.headers.common['Authorization'];
+    }
+  }, [token]);
 
   // Verificar se o usuário está autenticado ao carregar a aplicação
   useEffect(() => {
@@ -27,12 +37,21 @@ export const AuthProvider = ({ children }) => {
     if (checked) return; // Evita múltiplas chamadas
     
     try {
-      const response = await api.get('/api/auth/me');
-      if (response.data.success) {
-        setUser(response.data.user);
+      if (token) {
+        const response = await api.get('/api/auth/me');
+        if (response.data.success) {
+          setUser(response.data.user);
+        } else {
+          // Token inválido, limpar
+          setToken(null);
+          localStorage.removeItem('api_token');
+        }
       }
     } catch (error) {
       console.log('Usuário não autenticado');
+      // Limpar token se houver erro
+      setToken(null);
+      localStorage.removeItem('api_token');
     } finally {
       setLoading(false);
       setChecked(true);
@@ -48,6 +67,10 @@ export const AuthProvider = ({ children }) => {
 
       if (response.data.success) {
         setUser(response.data.user);
+        if (response.data.token) {
+          setToken(response.data.token);
+          localStorage.setItem('api_token', response.data.token);
+        }
         return { success: true, message: response.data.message };
       }
     } catch (error) {
@@ -67,6 +90,10 @@ export const AuthProvider = ({ children }) => {
 
       if (response.data.success) {
         setUser(response.data.user);
+        if (response.data.token) {
+          setToken(response.data.token);
+          localStorage.setItem('api_token', response.data.token);
+        }
         return { success: true, message: response.data.message };
       }
     } catch (error) {
@@ -77,17 +104,22 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await api.post('/api/auth/logout');
+      if (token) {
+        await api.post('/api/auth/logout');
+      }
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     } finally {
       setUser(null);
+      setToken(null);
+      localStorage.removeItem('api_token');
     }
   };
 
   const value = {
     user,
     loading,
+    token,
     login,
     register,
     logout,

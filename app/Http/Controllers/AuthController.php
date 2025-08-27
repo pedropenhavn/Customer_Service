@@ -38,7 +38,8 @@ class AuthController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                ]
+                ],
+                'token' => config('app.api_token') // Token para autenticação da API
             ], 201);
 
         } catch (ValidationException $e) {
@@ -78,7 +79,8 @@ class AuthController extends Controller
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
-                    ]
+                    ],
+                    'token' => config('app.api_token') // Token para autenticação da API
                 ], 200);
             }
 
