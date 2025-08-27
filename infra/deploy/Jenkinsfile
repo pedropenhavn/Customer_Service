@@ -56,17 +56,21 @@ pipeline {
                         echo "🔍 Verificando status dos containers..."
                         docker compose ps
                         
-                        echo "📋 Verificando se o frontend foi buildado..."
-                        if [ -d "frontend/build" ] && [ -f "frontend/build/index.html" ]; then
-                            echo "✅ Frontend buildado com sucesso!"
+                        echo "📋 Verificando se o frontend foi buildado dentro do container..."
+                        if docker exec app-base test -d /var/www/frontend/build && docker exec app-base test -f /var/www/frontend/build/index.html; then
+                            echo "✅ Frontend buildado com sucesso dentro do container!"
                             echo "📁 Arquivos no build:"
-                            ls -la frontend/build/
+                            docker exec app-base ls -la /var/www/frontend/build/
+                            
+                            echo "📋 Copiando build do container para o host..."
+                            docker cp app-base:/var/www/frontend/build ./frontend/
+                            echo "✅ Build copiado para o host!"
                         else
-                            echo "❌ Frontend não foi buildado corretamente"
+                            echo "❌ Frontend não foi buildado corretamente no container"
                             echo "📋 Logs do container:"
                             docker compose logs app
-                            echo "📁 Verificando diretório frontend:"
-                            ls -la frontend/
+                            echo "📁 Verificando diretório frontend no container:"
+                            docker exec app-base ls -la /var/www/frontend/
                             exit 1
                         fi
                     '''
