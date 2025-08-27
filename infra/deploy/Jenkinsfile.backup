@@ -38,6 +38,53 @@ pipeline {
                 }
             }
         }
+        stage('Install Node.js') {
+            steps {
+                script {
+                    sh '''
+                        echo "🔧 Instalando Node.js..."
+                        
+                        # Verificar se Node.js já está instalado
+                        if command -v node &> /dev/null && command -v npm &> /dev/null; then
+                            echo "✅ Node.js já está instalado"
+                            node --version
+                            npm --version
+                        else
+                            echo "📥 Instalando Node.js..."
+                            
+                            # Adicionar repositório NodeSource
+                            curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+                            
+                            # Instalar Node.js
+                            sudo apt-get update
+                            sudo apt-get install -y nodejs
+                            
+                            # Verificar instalação
+                            node --version
+                            npm --version
+                            
+                            echo "✅ Node.js instalado com sucesso!"
+                        fi
+                    '''
+                }
+            }
+        }
+        stage('Build Frontend') {
+            steps {
+                script {
+                    sh '''
+                        echo "📦 Instalando dependências do frontend..."
+                        cd $WORKSPACE/frontend
+                        npm ci --production=false
+                        
+                        echo "🔨 Buildando o frontend para produção..."
+                        npm run build
+                        
+                        echo "✅ Frontend buildado com sucesso!"
+                    '''
+                }
+            }
+        }
         stage('Build and Run Docker') {
             steps {
                 script {
@@ -46,24 +93,13 @@ pipeline {
                         docker compose down
                         
                         echo "🔨 Buildando e iniciando containers..."
-                        echo "📝 O frontend será buildado automaticamente dentro do container"
                         docker compose up -d --build
                         
-                        echo "⏳ Aguardando containers iniciarem e frontend ser buildado..."
-                        sleep 60
+                        echo "⏳ Aguardando containers iniciarem..."
+                        sleep 30
                         
                         echo "🔍 Verificando status dos containers..."
                         docker compose ps
-                        
-                        echo "📋 Verificando se o frontend foi buildado..."
-                        if [ -d "frontend/build" ]; then
-                            echo "✅ Frontend buildado com sucesso!"
-                        else
-                            echo "❌ Frontend não foi buildado"
-                            echo "📋 Logs do container:"
-                            docker compose logs app
-                            exit 1
-                        fi
                     '''
                 }
             }
